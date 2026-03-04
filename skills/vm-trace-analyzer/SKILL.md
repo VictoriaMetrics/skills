@@ -15,10 +15,9 @@ Analyze a VictoriaMetrics query trace and produce a structured performance repor
 
 ## Background
 
-VictoriaMetrics is a time series database. In cluster mode it has three components:
+VictoriaMetrics is a time series database. In cluster mode two components are involved in query processing:
 - **vmselect** — query frontend that accepts PromQL queries, fetches data from vmstorage nodes, and applies calculations
 - **vmstorage** — stores time series data and serves it to vmselect over RPC
-- **vminsert** — ingestion frontend (not involved in queries)
 
 In single-node mode, all components run in one process, so there are no RPC calls, but the internal trace structure is similar.
 
@@ -87,8 +86,8 @@ Key messages:
 - `search TSIDs: filters=..., timeRange=..., maxMetrics=N`
 - `search N indexDBs in parallel` — parallel index database search
 - `search indexDB <name> (<type>): timeRange=...` — individual index partition
-- `found N metric ids for filter=...` — metric ID resolution
-- `found N TSIDs for N metricIDs` — TSID resolution
+- `found N metric ids for filter=...` — metric ID, unique time series identifier within vmstorage
+- `found N TSIDs for N metricIDs` — same as metric ID
 - `sort N TSIDs`
 
 Cache-related messages in this phase:
@@ -123,7 +122,7 @@ This phase often dominates execution time for queries that scan large amounts of
 - `sort series by metric name and labels`
 - `generate /api/v1/query_range response for series=N, points=N` or `generate /api/v1/query response for series=N`
 
-Usually trivially fast.
+Usually trivially fast. Could be a bottleneck if response is huge (hundreds of series and thousands of datapoints per-series) and client's speed on reading the response is slow.
 
 ## Report template
 
@@ -141,12 +140,12 @@ Produce the report in this format:
 ## Performance Summary
 
 - **Total duration:** <N>ms
-- **Verdict:** <Fast / Acceptable / Slow / Very Slow>
+- **Duration score:** <Fast / Acceptable / Slow / Very Slow>
 
 Use these rough thresholds for the verdict:
   - Fast: < 500ms
-  - Acceptable: 500ms–2s
-  - Slow: 2s–10s
+  - Acceptable: 500ms–5s
+  - Slow: 5s–10s
   - Very Slow: > 10s
 
 ## Execution Time Breakdown
@@ -165,21 +164,18 @@ For cluster traces, break down data fetch per vmstorage node.)
 ## Data Volume
 
 - **Matched series:** <N> (across all storage nodes)
-- **Raw samples scanned:** <N>
-- **Blocks fetched:** <N>
+- **Raw samples scanned:** <N> 
 - **Bytes transferred:** <N> (human-readable, e.g., "268 MB")
 
 ## Storage Node Breakdown (cluster only)
 
-| Node | Series | Blocks sent | Duration |
+| Node | Series | Bytes sent | Duration |
 |------|--------|-------------|----------|
 | vmstorage-1 | N | N | Xms |
 | vmstorage-2 | N | N | Xms |
 
-## Cache Analysis
-
-Report tag filter cache hits/misses observed in the trace.
-Note which index partitions had cache misses.
+Don't print information about blocks in table. Don't inform about imbalance in Duration between vmstorage nodes
+unless it exceeds 1-2s. 
 
 ## Bottleneck Analysis
 
@@ -194,43 +190,42 @@ Provide actionable suggestions to reduce query latency.
 
 ## Writing recommendations
 
-Base recommendations on what the trace actually shows. Here are common patterns and the corresponding advice:
+Base recommendations on what the trace actually shows sorted by priority. Here are common patterns and the corresponding advice:
 
 **High series cardinality (many matched series)**
-- Suggest adding more specific label matchers to reduce series count
-- Suggest using recording rules to pre-aggregate if this is a dashboard query
+1. Suggest adding more specific label matchers to reduce series count
+2. Suggest using recording rules to pre-aggregate if this is a dashboard query
+3. Suggest using stream aggregation to pre-aggregate series before storing if possible
+4. Suggest narrowing the time range if the matched metric has a high churn rate
 
 **Large raw sample scan (high samplesScanned)**
-- Suggest increasing the query step to reduce points per series
-- Suggest narrowing the time range
-- For `rate()` over long ranges, suggest shorter `[window]` if semantically acceptable
+1. If the amount of samplesScanned significantly exceeds samples fetched, then query is using too short `[window]` or too agressive subqueries.
+2. For `rate()/irate()/increase()` suggest shorter `[window]` if semantically acceptable
+3. Suggest increasing the query step to reduce points per series
+4. Suggest narrowing the time range
 
 **Slow index lookups (series search dominates)**
-- Tag filter cache misses are normal on first query; note that repeated queries should be faster
-- Large number of metric IDs per day partition suggests high churn or high cardinality metric
-- Suggest more selective filters if possible
+1. Tag filter cache misses are normal on first query; note that repeated queries should be faster
+2. Large number of metric IDs per day partition suggests high churn or high cardinality metric
+3. Suggest more selective filters if possible
+4. Suggest increasing the amount of memory on vmstorage nodes if possible
 
 **Slow data fetch / high bytes transferred (cluster)**
-- Large blocks/bytes suggests vmstorage is doing heavy I/O
-- Multiple vmstorage nodes with very uneven durations may indicate hot spots or unbalanced sharding
-- Suggest checking vmstorage disk I/O and network bandwidth
+1. Large sent bytes suggests vmstorage is doing heavy I/O
+2. For resource saturation recommend checking resource usage on the official Grafana dashboard for VictoriaMetrics.
+3. Suggest checking vmstorage disk I/O and network bandwidth
+4. Multiple vmstorage nodes with very uneven durations (more than 1-2 seconds) may indicate resource saturation or hardware issues.
+5. Suggest adding more vmstorage nodes if possible to horizontally scale I/O capacity
 
 **Rollup computation dominates**
-- Often caused by scanning millions of raw samples
-- Suggest `step` increase, shorter time range, or recording rules
-- Note if incremental aggregation is being used (good) or not (could be optimized by the query engine in newer versions)
-
-**histogram_quantile with many buckets**
-- High bucket cardinality (many `le` labels) multiplies series count
-- Suggest reducing histogram bucket count at the instrumentation level if possible
-- Suggest using recording rules to pre-compute quantiles
-
-**Cache misses everywhere**
-- First query after restart or for a new time range will always miss
-- Suggest running the query again to verify cache-warmed performance
-- If repeated queries still show misses, the cache may be too small
+1. Often caused by scanning millions of raw samples.
+2. Suggest increasing vmselect CPU limits to improve computation speed.
+3. Suggest adding more specific label matchers to reduce series count.
+4. Suggest narrowing the time range.
+5. Suggest `step` increase, shorter time range, or recording rules.
 
 Do not speculate about issues that are not evidenced in the trace. If the trace looks healthy and the query is fast, say so.
+Do not mix recommendations from different patterns if one patter significantly dominates (>60%) query latency.
 
 ## Additional guidance
 
