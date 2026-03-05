@@ -1,27 +1,42 @@
 ---
 name: vm-trace-analyzer
 description: >
-  Analyze VictoriaMetrics query trace JSON output to diagnose query performance.
-  Produces a structured report covering time breakdown, bottlenecks, data volume,
-  and optimization recommendations. Works with both cluster (vmselect/vmstorage)
-  and single-node deployments.
+  Analyze VictoriaMetrics query trace JSON to diagnose slow queries and produce
+  a structured performance report with time breakdown, bottleneck analysis, and
+  optimization recommendations. ALWAYS use this skill when:
+  (1) the user mentions a VictoriaMetrics or VM trace, query trace, or trace JSON,
+  (2) the user provides or references a JSON file containing duration_msec/message/children fields,
+  (3) the user asks why a VictoriaMetrics/VM query is slow and has trace output,
+  (4) the user asks about vmstorage node distribution, cache misses, or rollup performance
+  in the context of a trace,
+  (5) the user mentions vmselect trace, trace=1, or query performance debugging with
+  VictoriaMetrics. This skill provides a structured report template that ensures consistent,
+  thorough analysis — do not attempt to analyze VM traces without it.
 argument-hint: trace.json
 disable-model-invocation: true
 ---
 
 # VictoriaMetrics Query Trace Analyzer
 
-Analyze a VictoriaMetrics query trace and produce a structured performance report.
+You are analyzing a VictoriaMetrics query trace — a JSON tree that records every step of a PromQL query execution. Your goal is to read this tree, understand what happened, and produce a clear performance report with actionable recommendations.
 
 ## Background
 
-VictoriaMetrics is a time series database. In cluster mode two components are involved in query processing:
-- **vmselect** — query frontend that accepts PromQL queries, fetches data from vmstorage nodes, and applies calculations
+In **Cluster** mode two components are involved in query processing:
+- **vmselect** — query frontend that accepts PromQL or MetricsQL queries, fetches data from vmstorage nodes, and applies calculations
 - **vmstorage** — stores time series data and serves it to vmselect over RPC
 
-In single-node mode, all components run in one process, so there are no RPC calls, but the internal trace structure is similar.
+**Single-node** mode runs everything in one process. The trace structure is similar but without RPC wrappers.
 
-Query tracing is enabled by adding `trace=1` to an HTTP query. The trace is a JSON tree where each node has:
+You can tell which mode you're looking at from the root message in trace:
+- **Cluster** traces contains `vmselect-<version>: /select/...`,
+- **Single-node** traces contains `/victoria-metrics-<version>: /api/v1/...`.
+
+## What is a query trace?
+
+When you add `trace=1` to a VictoriaMetrics HTTP query, it returns a JSON tree describing every internal operation.
+Each node looks like this:
+
 ```json
 {
   "duration_msec": 123.456,
@@ -32,121 +47,148 @@ Query tracing is enabled by adding `trace=1` to an HTTP query. The trace is a JS
 
 The tree is rooted at vmselect. It captures the full query execution pipeline: parsing, series search, data fetch from storage, rollup computation, aggregation, and response generation.
 
-## How to analyze
+## How to analyze the trace
 
-1. Read the trace JSON file the user provides
-2. Walk the tree and identify the execution phases (see "Trace phases" below)
-3. Build a time breakdown for each phase
-4. Identify the bottleneck — the phase consuming the most wall-clock time
-5. Produce the report (see "Report template" below)
+### Step 0: Run the parse script
 
-For large traces, focus on the top-level children first. Drill into subtrees only when they are relevant to the bottleneck or when durations are surprising.
+Before manually reading the trace file, run the analysis script to extract structured data:
 
-## Trace phases
+```bash
+python3 <skill_base_dir>/scripts/parse_trace.py <trace_file>
+```
 
-A query trace typically has these phases, roughly in this order. Not all phases appear in every trace. Identify them by matching the message patterns described here.
+This outputs: root info, trace tree (depth 3), key nodes with durations, per-vmstorage RPC breakdown, and computed totals (bytes, samples, series). Use this output as your primary data source for the report.
 
-### Phase 1: Query entry
+Additional subcommands for deeper investigation:
+- `python3 <script> <trace> tree --depth N` — print the trace tree to depth N
+- `python3 <script> <trace> nodes --pattern "fetch unique"` — find all nodes matching a substring
 
-The root node identifies the vmselect version, endpoint, query parameters, and result series count.
+Only drill deeper if the summary output reveals ambiguities or missing information.
 
-**Cluster pattern:** message starts with `vmselect-<version>: /select/...`
-**Single-node pattern:** message starts with a version prefix and the endpoint path
+After running the summary, also check for relevant performance improvements in newer VictoriaMetrics versions:
 
-Key fields to extract from the root message:
-- Endpoint: `/api/v1/query` (instant) or `/api/v1/query_range` (range)
-- `query=` — the PromQL expression
-- `start=`, `end=`, `step=` — query time range parameters (for range queries)
-- `series=` — total result series count
+```bash
+python3 <skill_base_dir>/scripts/check_changelog.py <version> <mode>
+```
 
-### Phase 2: Expression evaluation
+Where `<version>` is the semver from the parse script output (e.g., `v1.130.0`) and `<mode>` is `cluster` or `single-node`. This fetches changelogs from GitHub and shows performance-relevant fixes/features in versions newer than what the trace was captured on. If the fetch fails, skip this section gracefully.
 
-Messages matching `eval: query=..., timeRange=..., step=..., mayCache=...: series=N, points=N, pointsPerSeries=N`
+### Step 1: Start at the root
 
-These trace the recursive evaluation of the PromQL expression tree. Each eval node may have children for sub-expressions. Key numbers:
-- **series** — number of time series produced by this sub-expression
-- **points** — total data points across all series
-- **pointsPerSeries** — data points per series (= time range / step)
+Read the trace JSON file the user provides (or use the script output from Step 0).
+The root node tells you the big picture. Extract:
+- **Endpoint**: `/api/v1/query` (instant) or `/api/v1/query_range` (range)
+- **Query**: the PromQL expression after `query=`
+- **Time parameters**: `start=`, `end=`, `step=` (for range queries)
+- **Result count**: `series=` at the end
+- **Total duration**: the root `duration_msec`
+- **Version**: printed in the very start of the trace.
 
-### Phase 3: Function and aggregation evaluation
+### Step 2: Identify the phases
 
+Walk the top-level children and classify each into one of these phases.
+Not every trace has all of them — just report what's there.
+
+For large traces, focus on the top-level children first.
+Drill into subtrees only when they are relevant to the bottleneck or when durations are surprising.
+
+A query trace typically has these phases, roughly in this order.
+Not all phases appear in every trace. Identify them by matching the message patterns described here.
+
+**Expression evaluation** — nodes matching: `eval: query=..., timeRange=..., step=..., mayCache=...: series=N, points=N, pointsPerSeries=N`
+These trace the recursive PromQL/MetricsQL expression tree.
+These trace the recursive evaluation of the PromQL/MetricsQL expression tree.
+Each eval node may have children for sub-expressions. Key numbers:
+- *series* — number of time series produced by this sub-expression
+- *points* — total data points across all series
+- *pointsPerSeries* — data points per series
+
+**Functions and aggregations** — nodes matching:
 - `transform <func>(): series=N` — PromQL functions (histogram_quantile, clamp, etc.)
 - `aggregate <func>(): series=N` — aggregation operators (sum, avg, max, etc.)
-- `binary op "<op>": series=N` — binary operations (+, -, >, etc.)
+- `binary op "<op>": series=N` — binary operations
 
-### Phase 4: Series search (index lookup)
+**Series search (index lookup)** — where label matchers get resolved to internal series IDs:
+- In *Cluster* traces, wrapped in `rpc at vmstorage <addr>` → `rpc call search_v7()`, in *Single-node* - appears directly without RPC wrappers
+- Key messages:
+    - `init series search`,
+    - `search TSIDs`,
+    - `search N indexDBs in parallel` — parallel index database search,
+    - `search indexDB` — individual index partition,
+    - `found N metric ids for filter=...` — metric ID, unique time series identifier within vmstorage,
+    - `found N TSIDs for N metricIDs` — same as metric ID,
+    - `sort N TSIDs`
+- Cache-related messages in this phase:
+    - `search for metricIDs in tag filters cache` followed by `cache miss` or a cache hit (no `cache miss` child)
+    - `put N metricIDs in cache` / `stored N metricIDs into cache`
 
-This is where VictoriaMetrics resolves metric names and label matchers into internal series IDs.
+**Data fetch** — getting raw data:
+- *Cluster:* `fetch matching series: ...` wraps RPC calls to each vmstorage node:
+    - `rpc at vmstorage <addr>` — per-node RPC,
+    - `sent N blocks to vmselect` — amount of raw data transmitted back,
+    - `fetch unique series=N, blocks=N, samples=N, bytes=N` — aggregate summary across all vmstorage nodes,
+- *Single-node*: `search for parts with data for N series` followed by data scan messages.
+  The **bytes** value in `fetch unique series` tells you total data transferred and is a good indicator of I/O load.
 
-**Cluster:** appears inside `rpc at vmstorage <addr>` → `rpc call search_v7()` → `vmstorage-<version>: rpc call search_v7() at vmstorage`
-**Single-node:** appears directly without RPC wrappers
-
-Key messages:
-- `init series search: filters=..., timeRange=..., maxMetrics=N`
-- `search TSIDs: filters=..., timeRange=..., maxMetrics=N`
-- `search N indexDBs in parallel` — parallel index database search
-- `search indexDB <name> (<type>): timeRange=...` — individual index partition
-- `found N metric ids for filter=...` — metric ID, unique time series identifier within vmstorage
-- `found N TSIDs for N metricIDs` — same as metric ID
-- `sort N TSIDs`
-
-Cache-related messages in this phase:
-- `search for metricIDs in tag filters cache` followed by `cache miss` or a cache hit (no "cache miss" child)
-- `put N metricIDs in cache` / `stored N metricIDs into cache`
-
-### Phase 5: Data fetch
-
-**Cluster:** `fetch matching series: ...` wraps RPC calls to each vmstorage node
-- `rpc at vmstorage <addr>` — per-node RPC
-- `sent N blocks to vmselect` — amount of raw data transmitted back
-- `fetch unique series=N, blocks=N, samples=N, bytes=N` — aggregate summary across all vmstorage nodes
-
-**Single-node:** `search for parts with data for N series` followed by data scan messages
-
-The **bytes** value in `fetch unique series` tells you total data transferred and is a good indicator of I/O load.
-
-### Phase 6: Rollup computation
-
-The rollup phase computes rate(), increase(), avg_over_time(), and similar range-vector functions.
-
-Key messages:
-- `rollup <func>(): timeRange=..., step=N, window=N` or `rollup <func>() with incremental aggregation <agg>() over N series`
-- `the rollup evaluation needs an estimated N bytes of RAM for N series and N points per series (summary N points)` — memory estimate
+**Rollup computation** — computing rate(), increase(), avg_over_time(), etc.:
+- `rollup <func>(): timeRange=..., step=N, window=N`
+- `rollup <func>() with incremental aggregation <agg>() over N series` — this is an optimization
+- `the rollup evaluation needs an estimated N bytes of RAM for N series and N points per series`  — memory estimate
 - `parallel process of fetched data: series=N, samples=N` — the actual computation over raw samples
 - `series after aggregation with <func>(): N; samplesScanned=N` — post-aggregation result
+  This phase often dominates execution time for queries that scan large amounts of raw data.
 
-This phase often dominates execution time for queries that scan large amounts of raw data.
-
-### Phase 7: Response generation
-
+**Response generation** — usually trivial:
 - `sort series by metric name and labels`
-- `generate /api/v1/query_range response for series=N, points=N` or `generate /api/v1/query response for series=N`
+- `generate /api/v1/query_range response for series=N, points=N`
+  Usually trivially fast. Could be a bottleneck if response is huge (hundreds of series and thousands of datapoints per-series) and client's speed on reading the response is slow.
 
-Usually trivially fast. Could be a bottleneck if response is huge (hundreds of series and thousands of datapoints per-series) and client's speed on reading the response is slow.
+### Step 3: Build the time breakdown
 
-## Report template
+For each phase, note the `duration_msec`.
+In **Cluster** traces, the same phases repeat for each vmstorage node — aggregate for the summary but also track per-node numbers to spot imbalances.
 
-Produce the report in this format:
+### Step 4: Find the bottleneck
 
-```
+Identify which phase consumed the most time and explain *why* in concrete terms.
+For instance, "The rollup scanned 212M raw samples" is useful; "the query was slow" is not.
+
+### Step 5: Write recommendations
+
+Base recommendations only on what the trace actually shows.
+If the query is fast and healthy, say so — don't invent problems.
+
+Follow this algorithm to select recommendations:
+
+- **Step 5a:** From the time breakdown, identify which single phase dominates (>60% of total latency). Map it to the matching pattern in the "Recommendation patterns" section below.
+- **Step 5b:** Use ONLY that pattern's recommendations, in the listed priority order. Do not pull recommendations from other patterns.
+- **Step 5c:** If no single phase exceeds 60%, pick the pattern with the highest contribution and note secondary factors, but still do not mix recommendations across patterns.
+
+## Report format
+
+```markdown
 ## Query Overview
 
-- **Query:** `<the PromQL expression>`
+- **Query:** `<the PromQL/MetricsQL expression>`
 - **Type:** instant / range query
-- **Time range:** <start> to <end> (duration: <human readable>)
-- **Step:** <step value in human-readable form>
+- **Time range:** <start> to <end> (<duration>)
+- **Step:** <step>
 - **Result:** <N> series, <N> points
+- **Version:** vmselect or VM single-node version
 
 ## Performance Summary
 
 - **Total duration:** <N>ms
 - **Duration score:** <Fast / Acceptable / Slow / Very Slow>
+- **Matched series:** <N> (across all storage nodes)
+- **Raw samples scanned:** <N>
+- **Bytes transferred:** <N>
 
-Use these rough thresholds for the verdict:
-  - Fast: < 500ms
-  - Acceptable: 500ms–5s
-  - Slow: 5s–10s
-  - Very Slow: > 10s
+"Duration score" thresholds:
+- Fast: < 500ms
+- Acceptable: 500ms–5s
+- Slow: 5s–10s
+- Very Slow: > 10s
 
 ## Execution Time Breakdown
 
@@ -158,14 +200,8 @@ Use these rough thresholds for the verdict:
 | Aggregation / functions | Xms | X% | |
 | Response generation | Xms | X% | |
 
-(Adapt the phases to what actually appears in the trace.
-For cluster traces, break down data fetch per vmstorage node.)
-
-## Data Volume
-
-- **Matched series:** <N> (across all storage nodes)
-- **Raw samples scanned:** <N> 
-- **Bytes transferred:** <N> (human-readable, e.g., "268 MB")
+(Adapt the phases to what actually appears in the trace. 
+For cluster traces, break down data fetch per storage node.)
 
 ## Storage Node Breakdown (cluster only)
 
@@ -174,23 +210,44 @@ For cluster traces, break down data fetch per vmstorage node.)
 | vmstorage-1 | N | N | Xms |
 | vmstorage-2 | N | N | Xms |
 
-Don't print information about blocks in table. Don't inform about imbalance in Duration between vmstorage nodes
-unless it exceeds 1-2s. 
-
 ## Bottleneck Analysis
 
-Identify the single biggest contributor to total query time.
-Explain *why* it's slow in concrete terms (e.g., "scanning 212M raw samples
-for the rollup computation takes 4.7s — this dominates the 5.7s total").
+Name the single biggest contributor to total query time. Explain why it's slow with specific numbers from the trace.
 
 ## Recommendations
 
-Provide actionable suggestions to reduce query latency.
+Provide actionable suggestions to reduce query latency (see guidance below).
+
+## Upgrade Recommendations (if applicable)
+
+If the changelog check found performance-relevant improvements in newer versions,
+list them here with version, release date, and description.
+Only include this section if there are concrete relevant entries. Omit entirely otherwise.
 ```
 
-## Writing recommendations
+## Report generation rules
 
-Base recommendations on what the trace actually shows sorted by priority. Here are common patterns and the corresponding advice:
+- Do not speculate about issues that are not evidenced in the trace. If the trace looks healthy and the query is fast, say so.
+- Don't show information about blocks in report - it useless for users and can be confusing. Focus on bytes instead.
+- Don't inform about imbalance in Duration between vmstorage nodes unless it exceeds 1-2s.
+- For durations use format "Xm" / "Xs" / "Xms" (e.g., "123ms"), use minutes only for durations above 60s, seconds for durations above 1000ms, and ms for shorter durations.
+- For data volumes, use human-readable formats (e.g., "268 MB" instead of "268000000 bytes"). Use appropriate units (KB, MB, GB) based on the size.
+- Use the `duration_msec` values directly from the trace — don't estimate durations by subtraction
+- In cluster traces, the same phases (index search, data scan) appear for each vmstorage node. Aggregate these for the summary but also show per-node breakdown so the user can spot imbalances.
+- If the trace is too large to read in a single pass, read the top-level structure first, identify the slowest branches by `duration_msec`, and drill into those.
+- Some traces may include `subquery` or `@ modifier` evaluation — treat these like nested eval phases.
+- `mayCache=false` in eval messages is informational, not a problem
+
+## Recommendation patterns
+
+**CRITICAL: Pattern selection rules**
+1. First, identify which ONE pattern below matches your bottleneck from the time breakdown.
+2. Use ONLY the recommendations from that single pattern, in the listed priority order.
+3. Do NOT mix recommendations from different patterns. If the dominant phase exceeds 60% of total latency, all recommendations MUST come from that pattern only.
+4. If a recommendation appears in multiple patterns, that does not make it pattern-independent — only use it if it's listed in YOUR selected pattern.
+
+Base recommendations on what the trace actually shows sorted by priority.
+Here are common patterns and the corresponding advice:
 
 **High series cardinality (many matched series)**
 1. Suggest adding more specific label matchers to reduce series count
@@ -206,7 +263,7 @@ Base recommendations on what the trace actually shows sorted by priority. Here a
 
 **Slow index lookups (series search dominates)**
 1. Tag filter cache misses are normal on first query; note that repeated queries should be faster
-2. Large number of metric IDs per day partition suggests high churn or high cardinality metric
+2. Large number of metric IDs per day partition suggests high churn or high cardinality issue
 3. Suggest more selective filters if possible
 4. Suggest increasing the amount of memory on vmstorage nodes if possible
 
@@ -217,20 +274,19 @@ Base recommendations on what the trace actually shows sorted by priority. Here a
 4. Multiple vmstorage nodes with very uneven durations (more than 1-2 seconds) may indicate resource saturation or hardware issues.
 5. Suggest adding more vmstorage nodes if possible to horizontally scale I/O capacity
 
-**Rollup computation dominates**
-1. Often caused by scanning millions of raw samples.
-2. Suggest increasing vmselect CPU limits to improve computation speed.
-3. Suggest adding more specific label matchers to reduce series count.
-4. Suggest narrowing the time range.
-5. Suggest `step` increase, shorter time range, or recording rules.
+**Slow data fetch / high bytes transferred (Single-node)**
+1. Large sent bytes suggests VM single-node is doing heavy I/O
+2. For resource saturation recommend checking resource usage on the official Grafana dashboard for VictoriaMetrics.
+3. Suggest checking VM single-node disk I/O and CPU
+4. Suggest increasing disk I/O limits
+5. If optimizing the query or data it queries isn't possible, suggest switching to cluster topology for horizontal scaling of I/O capacity
 
-Do not speculate about issues that are not evidenced in the trace. If the trace looks healthy and the query is fast, say so.
-Do not mix recommendations from different patterns if one patter significantly dominates (>60%) query latency.
+**Rollup computation dominates** (often caused by scanning millions of raw samples)
+1. Suggest increasing vmselect CPU limits to improve computation speed.
+2. Suggest adding more specific label matchers to reduce the number of series being processed.
+3. Suggest narrowing the time range to reduce the volume of raw samples.
+4. Suggest increasing the query `step` to reduce points per series.
+5. For recurring dashboard queries, suggest recording rules to pre-compute the result.
 
-## Additional guidance
-
-- When reporting durations, use the `duration_msec` values directly from the trace. Do not estimate or calculate durations by subtraction unless explicitly noting it.
-- In cluster traces, the same phases (index search, data scan) appear for each vmstorage node. Aggregate these for the summary but also show per-node breakdown so the user can spot imbalances.
-- If the trace is too large to read in a single pass, read the top-level structure first, identify the slowest branches by `duration_msec`, and drill into those.
-- Some traces may include `subquery` or `@ modifier` evaluation — treat these like nested eval phases.
-- The `mayCache=false` field in eval messages indicates whether the result could be cached. This is informational, not an issue.
+**Version upgrade opportunities**
+If the `check_changelog.py` script found relevant performance improvements in newer versions, mention the upgrade as an additional recommendation in the "Upgrade Recommendations" report section. This is the ONE exception to the "single pattern only" rule — upgrade recommendations are supplementary and can be appended regardless of which bottleneck pattern was selected. Only include entries that are directly relevant to the observed bottleneck or the components involved in the trace.
