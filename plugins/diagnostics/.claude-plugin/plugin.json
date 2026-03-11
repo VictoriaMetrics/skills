@@ -1,0 +1,19 @@
+{
+  "name": "diagnostics",
+  "description": "Diagnostic tools for VictoriaMetrics. Analyze query execution traces for performance bottlenecks and orchestrate multi-signal investigations across metrics, logs, traces, and alerts.",
+  "version": "1.0.0",
+  "author": {
+    "name": "VictoriaMetrics"
+  },
+  "homepage": "https://victoriametrics.com",
+  "repository": "https://github.com/VictoriaMetrics/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "victoriametrics",
+    "diagnostics",
+    "investigation",
+    "performance",
+    "troubleshooting",
+    "observability"
+  ]
+}

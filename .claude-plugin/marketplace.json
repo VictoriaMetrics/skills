@@ -1,0 +1,19 @@
+{
+  "name": "victoriametrics-tools",
+  "owner": {
+    "name": "VictoriaMetrics"
+  },
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "name": "query",
+      "source": "./plugins/query",
+      "description": "Query metrics, logs, traces, and alerts across the VictoriaMetrics stack"
+    },
+    {
+      "name": "diagnostics",
+      "source": "./plugins/diagnostics",
+      "description": "Query trace analysis and multi-signal investigation tools"
+    }
+  ]
+}
