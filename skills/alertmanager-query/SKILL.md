@@ -174,7 +174,11 @@ curl -s -G ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ```bash
 # Check current environment
 echo "VM_ALERTMANAGER_URL: $VM_ALERTMANAGER_URL"
-echo "VM_AUTH_HEADER: ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty)}}"
+if [ -n "$VM_AUTH_HEADER" ]; then
+  echo "VM_AUTH_HEADER: (set, length=${#VM_AUTH_HEADER})"
+else
+  echo "VM_AUTH_HEADER: (unset or empty)"
+fi
 ```
 
 ## Important Notes

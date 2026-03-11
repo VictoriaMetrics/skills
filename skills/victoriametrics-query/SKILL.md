@@ -277,7 +277,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ```bash
 # Check current environment
 echo "VM_METRICS_URL: $VM_METRICS_URL"
-echo "VM_AUTH_HEADER: ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty)}}"
+echo "VM_AUTH_HEADER: $( [ -n "$VM_AUTH_HEADER" ] && echo '(set)' || echo '(empty)' )"
 ```
 
 ## Important Notes

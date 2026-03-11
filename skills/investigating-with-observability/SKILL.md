@@ -169,7 +169,11 @@ echo "VM_METRICS_URL:      $VM_METRICS_URL"
 echo "VM_LOGS_URL:         $VM_LOGS_URL"
 echo "VM_TRACES_URL:       $VM_TRACES_URL"
 echo "VM_ALERTMANAGER_URL: $VM_ALERTMANAGER_URL"
-echo "VM_AUTH_HEADER:      ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty - no auth)}}"
+if [ -n "${VM_AUTH_HEADER-}" ]; then
+  echo "VM_AUTH_HEADER:      (set)"
+else
+  echo "VM_AUTH_HEADER:      (empty - no auth)"
+fi
 ```
 
 If unsure which environment the application runs in, ask user.

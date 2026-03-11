@@ -186,7 +186,11 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ```bash
 # Check current environment
 echo "VM_TRACES_URL: $VM_TRACES_URL"
-echo "VM_AUTH_HEADER: ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty)}}"
+if [ -n "${VM_AUTH_HEADER-}" ]; then
+  echo "VM_AUTH_HEADER: (set)"
+else
+  echo "VM_AUTH_HEADER: (unset)"
+fi
 ```
 
 ## Important Notes

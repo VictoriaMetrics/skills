@@ -34,7 +34,7 @@ When `VM_AUTH_HEADER` is empty, `-H` flag is omitted automatically.
 ## Critical Rules
 
 - ALWAYS pass `start` on ALL VictoriaLogs endpoints — omitting it scans ALL stored data (extremely expensive). Not technically required by the API, but omitting it is almost never what you want.
-- `stats_query` uses `time` (defaults to now if omitted), `stats_query_range` uses `start`/`end`/`step`
+- `stats_query` uses `time` (ALWAYS pass it explicitly; do not rely on a default), `stats_query_range` uses `start`/`end`/`step`
 - `step` is required for `hits` endpoint
 - `/select/logsql/query` returns JSON Lines (one JSON object per line), NOT a JSON array
 - LogsQL queries with special characters MUST be URL-encoded (use `--data-urlencode` for POST)
@@ -260,7 +260,11 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ```bash
 # Check current environment
 echo "VM_LOGS_URL: $VM_LOGS_URL"
-echo "VM_AUTH_HEADER: ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty)}}"
+if [ -n "${VM_AUTH_HEADER:-}" ]; then
+  echo "VM_AUTH_HEADER: (set)"
+else
+  echo "VM_AUTH_HEADER: (empty)"
+fi
 ```
 
 ## Important Notes
