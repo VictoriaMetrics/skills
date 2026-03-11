@@ -172,16 +172,10 @@ curl -s -G ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ## Environment Switching
 
 ```bash
-# Switch to production
-export VM_ALERTMANAGER_URL="https://alertmanager.example.com"
-export VM_AUTH_HEADER="Authorization: Bearer <token>"
-
 # Check current environment
 echo "VM_ALERTMANAGER_URL: $VM_ALERTMANAGER_URL"
 echo "VM_AUTH_HEADER: ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty)}}"
 ```
-
-Note: AlertManager is typically prod-only. No local instance is configured by default.
 
 ## Important Notes
 

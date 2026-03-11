@@ -19,11 +19,12 @@ These skills help AI agents and automation tools understand, operate, and troubl
 These skills are designed for use with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and compatible AI agents. Each skill is invoked automatically when the agent detects a matching request, or manually via slash commands:
 
 ```
-/victoriametrics-query    — query metrics, discover labels, check alerts and rules
-/victorialogs-query       — search logs, run stats, discover fields
-/victoriatraces-query     — search traces, discover services, map dependencies
-/alertmanager-query       — list alerts, manage silences
-/investigating-with-observability — structured multi-signal investigation
+/victoriametrics-query            - query metrics, discover labels, check alerts and rules
+/victorialogs-query               - search logs, run stats, discover fields
+/victoriatraces-query             - search traces, discover services, map dependencies
+/alertmanager-query               - list alerts, manage silences
+/vm-trace-analyzer                - perform an analysis of the query performance based on provided trace
+/investigating-with-observability - structured multi-signal investigation
 ```
 
 **Example prompts that trigger skills:**

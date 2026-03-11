@@ -16,8 +16,7 @@ Query VictoriaLogs HTTP API directly via curl. Covers log search, stats queries,
 
 ```bash
 # $VM_LOGS_URL - base URL
-#   Prod: export VM_LOGS_URL="https://vlselect.example.com"
-#   Local: export VM_LOGS_URL="http://localhost:9428"
+#   Example: export VM_LOGS_URL="https://vlselect.example.com"
 # $VM_AUTH_HEADER - auth header (set for prod, empty for local)
 ```
 
@@ -196,6 +195,7 @@ LogsQL is space-separated (AND by default). Pipes use `|`.
 ```
 
 Common mistakes:
+
 - `| grep` does NOT exist. Use word filters or `~"regex"`.
 - `| filter` is a valid pipe but ONLY after `| stats` for filtering aggregated results.
 - Time ranges go in API `start`/`end` params OR `_time:` filter, NOT both.
@@ -258,14 +258,6 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ## Environment Switching
 
 ```bash
-# Switch to local dev
-export VM_LOGS_URL="http://localhost:9428"
-export VM_AUTH_HEADER=""
-
-# Switch to production
-export VM_LOGS_URL="https://vlselect.example.com"
-export VM_AUTH_HEADER="Authorization: Bearer <token>"
-
 # Check current environment
 echo "VM_LOGS_URL: $VM_LOGS_URL"
 echo "VM_AUTH_HEADER: ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty)}}"

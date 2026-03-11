@@ -1,10 +1,9 @@
 # VictoriaMetrics HTTP API Reference
 
-Full endpoint documentation for VictoriaMetrics metrics queries. Verified against VictoriaMetrics v2.24.0 and official docs (2026-03-07).
-
 Base URL: `$VM_METRICS_URL`
-- Prod (cluster vmselect): `https://vmselect.example.com/select/0/prometheus`
-- Local (single-node): `http://localhost:8428`
+
+- cluster vmselect: `https://vmselect.example.com/select/0/prometheus`
+- single-node: `http://localhost:8428`
 
 ## Query Endpoints
 
@@ -20,6 +19,7 @@ Evaluate a MetricsQL/PromQL expression at a single point in time.
 | `timeout` | No | duration string | - | Query timeout |
 
 Response:
+
 ```json
 {
   "status": "success",
@@ -36,6 +36,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/query?query=up&time=2026-03-07T09:00:00Z" | jq .
@@ -54,6 +55,7 @@ Evaluate a MetricsQL expression over a time range.
 | `timeout` | No | duration string | - | Query timeout |
 
 Response:
+
 ```json
 {
   "status": "success",
@@ -70,6 +72,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query=rate(http_requests_total[5m])' \
@@ -89,6 +92,7 @@ List all label names.
 | `end` | No | RFC3339 or Unix seconds | End of time range |
 
 Response:
+
 ```json
 {
   "status": "success",
@@ -97,6 +101,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/labels" | jq '.data[]'
@@ -113,6 +118,7 @@ Get values for a specific label. `label_name` is a PATH segment, not a query par
 | `end` | No | RFC3339 or Unix seconds | End of time range |
 
 Response:
+
 ```json
 {
   "status": "success",
@@ -121,6 +127,7 @@ Response:
 ```
 
 Examples:
+
 ```bash
 # All values for "namespace" label
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
@@ -144,6 +151,7 @@ Find time series matching label selectors.
 | `limit` | No | integer | Max series to return |
 
 Response:
+
 ```json
 {
   "status": "success",
@@ -154,6 +162,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]={namespace="myapp"}' \
@@ -169,9 +178,10 @@ Get type and help text for metrics.
 | `metric` | No | string | Metric name search keyword |
 | `limit` | No | integer | Max results |
 
-Note: The raw API uses `metric` parameter. The MCP server used `search` — they are NOT the same name.
+Note: The raw API uses `metric` parameter.
 
 Response:
+
 ```json
 {
   "status": "success",
@@ -184,6 +194,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/metadata?metric=http_request&limit=10" | jq .
@@ -196,6 +207,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Returns all firing and pending alerts. No parameters.
 
 Response:
+
 ```json
 {
   "status": "success",
@@ -214,6 +226,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/alerts" | jq '.data.alerts[]'
@@ -224,6 +237,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Returns all configured rules. No parameters.
 
 Response:
+
 ```json
 {
   "status": "success",
@@ -246,6 +260,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/rules" | jq '.data.groups[] | {name, rules: [.rules[] | select(.state != "inactive") | .name]}'
@@ -258,6 +273,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Cardinality statistics. No parameters.
 
 Key fields in response:
+
 - `seriesCountByMetricName` — top metrics by series count
 - `seriesCountByLabelName` — top labels by series count
 - `seriesCountByLabelValuePair` — top label=value pairs
@@ -265,6 +281,7 @@ Key fields in response:
 - `totalSeries` — total active time series
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/tsdb" | jq '{total: .data.totalSeries, top_metrics: .data.seriesCountByMetricName[:5]}'
@@ -275,6 +292,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Currently executing queries. No parameters.
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/active_queries" | jq .
@@ -290,6 +308,7 @@ Most frequent and slowest queries.
 | `maxLifetime` | No | duration string | Time window to consider |
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/top_queries?topN=10" | jq '.data.topByCount[:5]'
@@ -300,6 +319,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Version information. No parameters.
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/buildinfo" | jq .
@@ -319,12 +339,14 @@ Export raw time series samples in JSON lines format.
 | `reduce_mem_usage` | No | integer (1) | Reduce memory usage for large exports |
 
 Response: JSON lines (one JSON object per line, NOT wrapped in standard API response):
+
 ```json
 {"metric":{"__name__":"http_requests_total","job":"api","namespace":"myapp"},"values":[1,2,3],"timestamps":[1709769600000,1709769900000,1709770200000]}
 {"metric":{"__name__":"http_requests_total","job":"api","namespace":"other"},"values":[4,5,6],"timestamps":[1709769600000,1709769900000,1709770200000]}
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]=http_requests_total' \
@@ -334,6 +356,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ```
 
 Also available:
+
 - `POST /api/v1/export/csv` — CSV format. Additional params: `format` (column spec, e.g., `__name__,__value__,__timestamp__:unix_s`)
 - `POST /api/v1/export/native` — Native binary format (for import via `POST /api/v1/import/native`)
 
@@ -342,6 +365,7 @@ Also available:
 Total number of active time series. No parameters.
 
 Response:
+
 ```json
 {
   "status": "success",
@@ -362,6 +386,7 @@ Statistics on which metrics are being queried and how frequently.
 | `match_pattern` | No | string | Metric name prefix filter |
 
 Example:
+
 ```bash
 # Metrics queried 0 or 1 times (candidates for removal)
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
@@ -377,6 +402,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Root-level endpoint. Returns runtime flags that differ from defaults.
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "${VM_METRICS_URL%%/select/*}/flags" | jq .
@@ -418,6 +444,7 @@ Test how metric relabeling rules transform a metric.
 | `relabel_config` | Yes | string | YAML relabeling config (same format as `-relabelConfig` file) |
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   -d 'metric=foo{bar="baz"}' \
@@ -436,6 +463,7 @@ Test which downsampling rules match a given metric.
 | `downsampling_period` | Yes | string | Downsampling config (same format as `-downsampling.period` flag) |
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   -d 'metric=foo{bar="baz"}' \
@@ -453,6 +481,7 @@ Test which retention policy applies to a given metric.
 | `retention_period` | Yes | string | Retention config (same format as `-retentionPeriod` flag) |
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   -d 'metric=foo{bar="baz"}' \
@@ -486,6 +515,7 @@ Note: All three debug endpoints return HTML. For interactive use, access VMUI at
 | `/retention-filters-debug` | No | Yes | `application/x-www-form-urlencoded` |
 
 For POST requests, use `--data-urlencode` with curl to properly encode query parameters containing special characters:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query=sum(rate(http_requests_total{code=~"5.."}[5m])) by (namespace)' \
@@ -495,6 +525,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ## Timestamp Format
 
 All timestamp parameters accept:
+
 - RFC3339: `2026-03-07T09:00:00Z`
 - Unix seconds: `1709769600`
 - Relative (VictoriaMetrics extension): `now-1h`, `now-30m` (not standard PromQL)

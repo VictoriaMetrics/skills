@@ -16,8 +16,7 @@ Query VictoriaTraces Jaeger-compatible HTTP API directly via curl. Covers servic
 
 ```bash
 # $VM_TRACES_URL - base URL including /select/jaeger prefix
-#   Prod: export VM_TRACES_URL="https://vtselect.example.com/select/jaeger"
-#   Local: export VM_TRACES_URL="http://localhost:10428/select/jaeger"
+#   Example: export VM_TRACES_URL="https://vtselect.example.com/select/jaeger"
 # $VM_AUTH_HEADER - auth header (set for prod, empty for local)
 ```
 
@@ -185,14 +184,6 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ## Environment Switching
 
 ```bash
-# Switch to local dev
-export VM_TRACES_URL="http://localhost:10428/select/jaeger"
-export VM_AUTH_HEADER=""
-
-# Switch to production
-export VM_TRACES_URL="https://vtselect.example.com/select/jaeger"
-export VM_AUTH_HEADER="Authorization: Bearer <token>"
-
 # Check current environment
 echo "VM_TRACES_URL: $VM_TRACES_URL"
 echo "VM_AUTH_HEADER: ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty)}}"

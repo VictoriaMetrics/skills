@@ -1,10 +1,10 @@
 # VictoriaLogs HTTP API Reference
 
-Full endpoint documentation for VictoriaLogs log queries. Verified against official VictoriaLogs docs and live local endpoint (2026-03-07).
+Full endpoint documentation for VictoriaLogs log queries.
 
 Base URL: `$VM_LOGS_URL`
-- Prod: `https://vlselect.example.com`
-- Local: `http://localhost:9428`
+
+- Example: `https://vlselect.example.com`
 
 ## Query Endpoints
 
@@ -23,12 +23,14 @@ Search logs using LogsQL. Returns JSON Lines (one JSON object per line), NOT a J
 | `timeout` | No | duration | - | Query timeout |
 
 Response (JSON Lines — one object per line):
+
 ```
 {"_time":"2026-03-07T09:00:00Z","_msg":"Connection refused","level":"error","namespace":"myapp","pod":"myapp-abc123"}
 {"_time":"2026-03-07T09:00:01Z","_msg":"Retrying connection","level":"warn","namespace":"myapp","pod":"myapp-abc123"}
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error' \
@@ -51,6 +53,7 @@ Evaluate a LogsQL stats query at a single point in time. Query MUST contain a `|
 | `start` | No | RFC3339 | - | Alternative to `time` — start of aggregation window |
 
 Response (Prometheus-compatible JSON):
+
 ```json
 {
   "status": "success",
@@ -71,6 +74,7 @@ Response (Prometheus-compatible JSON):
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} | stats by (level) count() as total' \
@@ -89,6 +93,7 @@ Evaluate a LogsQL stats query over a time range. Query MUST contain a `| stats` 
 | `step` | No | duration string | - | Resolution step (e.g., `1h`, `5m`) |
 
 Response (Prometheus matrix format):
+
 ```json
 {
   "status": "success",
@@ -105,6 +110,7 @@ Response (Prometheus matrix format):
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error | stats count() as total' \
@@ -124,6 +130,7 @@ Count log entries over time. Useful for log volume analysis.
 | `field` | No | string | - | Group hits by this field |
 
 Response:
+
 ```json
 {
   "hits": [
@@ -133,6 +140,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
@@ -152,6 +160,7 @@ Returns the most frequent values for ALL fields in matching logs. Best single-ca
 | `end` | No | RFC3339 | now | End of time range |
 
 Response:
+
 ```json
 [
   {
@@ -173,6 +182,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
@@ -190,6 +200,7 @@ Discover field names present in matching log entries (excludes stream fields).
 | `end` | No | RFC3339 | now | End of time range |
 
 Response:
+
 ```json
 [
   {"name": "_msg", "hits": 10000},
@@ -200,6 +211,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
@@ -219,6 +231,7 @@ Get values for a specific non-stream field.
 | `limit` | No | integer | - | Max values to return |
 
 Response:
+
 ```json
 [
   {"value": "error", "hits": 500},
@@ -228,6 +241,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
@@ -245,6 +259,7 @@ Discover stream field names (e.g., namespace, pod, container).
 | `end` | No | RFC3339 | now | End of time range |
 
 Response:
+
 ```json
 [
   {"name": "namespace", "hits": 50000},
@@ -254,6 +269,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query=*' \
@@ -272,6 +288,7 @@ Get values for a specific stream field.
 | `end` | No | RFC3339 | now | End of time range |
 
 Response:
+
 ```json
 [
   {"value": "myapp", "hits": 30000},
@@ -281,6 +298,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query=*' \
@@ -299,6 +317,7 @@ List log stream identifiers matching the query.
 | `limit` | No | integer | - | Max streams to return |
 
 Response:
+
 ```json
 [
   {"value": "{namespace=\"myapp\",pod=\"myapp-abc123\",container=\"app\"}", "hits": 5000}
@@ -306,6 +325,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
@@ -323,6 +343,7 @@ List internal stream IDs.
 | `end` | No | RFC3339 | now | End of time range |
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
@@ -350,7 +371,7 @@ All endpoints accept both GET and POST. For POST, use `--data-urlencode` with cu
 ## Timestamp Format
 
 VictoriaLogs uses RFC3339 timestamps exclusively:
+
 - Format: `2026-03-07T09:00:00Z`
 - Duration strings for `step`: `5m`, `1h`, `30s`
 - Unix timestamps are NOT supported
-

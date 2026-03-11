@@ -1,6 +1,6 @@
 ---
 name: investigating-with-observability
-description: Use when investigating issues, debugging problems for applications, or responding to alerts in the Kubernetes cluster using VictoriaMetrics, VictoriaLogs, or VictoriaTraces MCP tools.
+description: Use when investigating issues, debugging problems for applications, or responding to alerts in the Kubernetes cluster using VictoriaMetrics, VictoriaLogs, or VictoriaTraces.
 allowed-tools: Bash(curl:*), Agent, Read
 ---
 
@@ -41,10 +41,12 @@ Before writing any query, establish what's already known.
 If `VM_ALERTMANAGER_URL` IS available, the AlertManager check agent handles BOTH VM alerts and AlertManager queries — no need to dispatch a separate metrics agent for alerts.
 
 Read the agent prompt files and dispatch in a single Agent tool call. Include in each subagent's prompt:
+
 - The agent file content
 - The investigation target (namespace, service, or component name if known)
 
 **3. Synthesize results** — once subagents return:
+
 - Combine alert findings from all sources
 - Establish a timeline: when did symptoms start? What changed?
 - If timeline is unclear, ask the user
@@ -63,6 +65,7 @@ Read the agent prompt files and dispatch in a single Agent tool call. Include in
 **Never guess metric names, log field names, or service names.** Discovery is not optional — it prevents the single most common investigation failure: drawing conclusions from empty results caused by wrong names.
 
 **Dispatch discovery subagents in parallel** for ALL available backends. Read each agent prompt file and dispatch in a single Agent tool call. Include in each subagent's prompt:
+
 - The agent file content
 - Target namespace and/or service name (from Phase 1 findings)
 - Time range for the investigation (RFC3339 format)
@@ -75,6 +78,7 @@ Read the agent prompt files and dispatch in a single Agent tool call. Include in
 | Traces discovery | `VM_TRACES_URL` available |
 
 **Synthesize discovery results:**
+
 - Merge discovered names across all backends
 - Note which backends have data for the target and which don't
 - Identify the richest signal source for Phase 3 hypothesis testing
@@ -88,17 +92,20 @@ After discovery, form a specific hypothesis before querying further.
 **State it clearly:** "I think [component X] is [failing/slow/OOM] because [evidence Y from Phase 1]."
 
 **Test minimally:**
+
 - Query ONE thing to confirm or refute the hypothesis
 - Don't query everything at once — you'll drown in data
 - Use instant queries first (cheaper, faster) before range queries
 
 **If the hypothesis is wrong:**
+
 - Don't add more queries on top — form a NEW hypothesis
 - Re-examine what Phase 1 and Phase 2 revealed
 - Ask: did discovery show anything unexpected?
 
 **After 3 failed hypotheses: STOP.**
 Three wrong guesses means you're missing something fundamental. Either:
+
 - A key data source hasn't been discovered yet
 - The scope is wrong (different namespace, different service, different time range)
 - You need to ask the user for more context
@@ -108,17 +115,20 @@ Three wrong guesses means you're missing something fundamental. Either:
 A single signal type is not proof. Correlate across at least two before concluding.
 
 **Dispatch correlation subagents in parallel** for the signal types you need. Reuse the same agent prompt files from `agents/`, but provide specific queries rather than discovery tasks. Include in each subagent's prompt:
+
 - The agent file content
 - The specific query to run (metric expression, log filter, trace search parameters)
 - The exact time range to query (narrowed from Phase 3 findings)
 - What to look for (the confirmed hypothesis from Phase 3)
 
 Example parallel dispatch for correlation:
+
 - Metrics agent: "Query `rate(http_requests_total{code=~'5..', namespace='myapp'}[5m])` from T1 to T2"
 - Logs agent: "Search `{namespace='myapp'} error` from T1 to T2, return sample messages"
 - Traces agent: "Search traces for service `myapp` with `minDuration=1s` from T1 to T2"
 
 **Correlation techniques:**
+
 - **Time-based**: Identify anomaly timestamp in metrics, query logs/traces at that time
 - **Trace ID**: Find trace IDs in traces, search logs for `trace_id:"<id>"`
 - **Pod name**: Get pod name from metrics labels, use it in log stream filters
@@ -128,6 +138,7 @@ Example parallel dispatch for correlation:
 ## Red Flags — STOP and Return to Phase 1
 
 If you catch yourself:
+
 - Proposing a root cause after querying only one signal type
 - Writing a LogsQL query from memory without checking syntax
 - Querying a metric name you haven't confirmed exists via discovery
@@ -157,29 +168,8 @@ Environment is controlled by env vars. Check current state:
 echo "VM_METRICS_URL:      $VM_METRICS_URL"
 echo "VM_LOGS_URL:         $VM_LOGS_URL"
 echo "VM_TRACES_URL:       $VM_TRACES_URL"
-echo "VM_ANOMALY_URL:      $VM_ANOMALY_URL"
 echo "VM_ALERTMANAGER_URL: $VM_ALERTMANAGER_URL"
 echo "VM_AUTH_HEADER:      ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty - no auth)}}"
-```
-
-Switch to production:
-```bash
-export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
-export VM_LOGS_URL="https://vlselect.example.com"
-export VM_TRACES_URL="https://vtselect.example.com/select/jaeger"
-export VM_ANOMALY_URL="https://vmanomaly.example.com"
-export VM_ALERTMANAGER_URL="https://alertmanager.example.com"
-export VM_AUTH_HEADER="Authorization: Bearer <token>"
-```
-
-Switch to local:
-```bash
-export VM_METRICS_URL="http://localhost:8428"
-export VM_LOGS_URL="http://localhost:9428"
-export VM_TRACES_URL="http://localhost:10428/select/jaeger"
-export VM_ANOMALY_URL="http://localhost:8490"
-export VM_ALERTMANAGER_URL="http://localhost:9093"
-export VM_AUTH_HEADER=""
 ```
 
 If unsure which environment the application runs in, ask user.

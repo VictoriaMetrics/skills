@@ -17,8 +17,8 @@ Query VictoriaMetrics HTTP API directly via curl. Covers instant/range queries, 
 
 ```bash
 # $VM_METRICS_URL - base URL
-#   Prod (cluster): export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
-#   Local (single): export VM_METRICS_URL="http://localhost:8428"
+#   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
+#   single: export VM_METRICS_URL="http://localhost:8428"
 # $VM_AUTH_HEADER - auth header (set for prod, empty for local)
 ```
 
@@ -93,7 +93,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/metadata?metric=http_request&limit=10" | jq .
 ```
 
-Parameters: `metric` (search keyword), `limit`. Note: MCP used `search` param, raw API uses `metric`.
+Parameters: `metric` (search keyword), `limit`.
 
 ### Alerts and Rules
 
@@ -275,14 +275,6 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ## Environment Switching
 
 ```bash
-# Switch to local dev
-export VM_METRICS_URL="http://localhost:8428"
-export VM_AUTH_HEADER=""
-
-# Switch to production
-export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
-export VM_AUTH_HEADER="Authorization: Bearer <token>"
-
 # Check current environment
 echo "VM_METRICS_URL: $VM_METRICS_URL"
 echo "VM_AUTH_HEADER: ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty)}}"
@@ -292,7 +284,7 @@ echo "VM_AUTH_HEADER: ${VM_AUTH_HEADER:+(set)${VM_AUTH_HEADER-(empty)}}"
 
 - POST endpoints accept `application/x-www-form-urlencoded` (use `--data-urlencode` for query params with special chars)
 - `match[]` parameter requires the `[]` suffix — `match` alone won't work
-- For metric metadata, raw API uses `metric` param (not `search` as MCP did)
+- For metric metadata, raw API uses `metric` param
 - `label_values` uses a path parameter: `/api/v1/label/{label_name}/values`
 - `expand-with-exprs`, `prettify-query`, `flags`, `metric-relabel-debug`, `downsampling-filters-debug`, and `retention-filters-debug` are root-level paths, not under `/api/v1/`
 - Export endpoint (`/api/v1/export`) returns JSON lines (one object per line), not standard API response JSON

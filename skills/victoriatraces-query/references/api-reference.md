@@ -1,10 +1,10 @@
 # VictoriaTraces Jaeger-compatible HTTP API Reference
 
-Full endpoint documentation for VictoriaTraces trace queries. Verified against live VictoriaTraces instance and Jaeger API specification (2026-03-07).
+Full endpoint documentation for VictoriaTraces trace queries.
 
 Base URL: `$VM_TRACES_URL`
-- Prod: `https://vtselect.example.com/select/jaeger`
-- Local: `http://localhost:10428/select/jaeger`
+
+- Example: `https://vtselect.example.com/select/jaeger`
 
 IMPORTANT: The Jaeger API prefix `/select/jaeger` is included in `$VM_TRACES_URL`. All endpoints below are relative to this base.
 
@@ -15,6 +15,7 @@ IMPORTANT: The Jaeger API prefix `/select/jaeger` is included in `$VM_TRACES_URL
 List all traced service names. No parameters.
 
 Response:
+
 ```json
 {
   "data": ["frontend", "api-gateway", "user-service", "order-service"],
@@ -26,6 +27,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services" | jq '.data[]'
@@ -36,6 +38,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 List operations for a specific service. `service` is a PATH parameter.
 
 Response:
+
 ```json
 {
   "data": ["GET /api/health", "POST /api/orders", "GET /api/users/{id}"],
@@ -47,6 +50,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services/my-service/operations" | jq '.data[]'
@@ -72,6 +76,7 @@ Search for traces matching criteria. `service` is required.
 | `tags` | No | string | - | Tag filters — Jaeger JSON format `{"key":"value"}` or VictoriaTraces extended format `key=value resource_attr:key=value` |
 
 Response:
+
 ```json
 {
   "data": [
@@ -114,6 +119,7 @@ Response:
 ```
 
 Key response details:
+
 - `spans[].startTime` — Unix MICROSECONDS (not milliseconds)
 - `spans[].duration` — MICROSECONDS
 - `spans[].references` — parent span references (`CHILD_OF`, `FOLLOWS_FROM`)
@@ -122,6 +128,7 @@ Key response details:
 - `spans[].logs` — span events/logs with timestamp and fields
 
 Examples:
+
 ```bash
 # Basic search — timestamps in microseconds (16 digits)
 END_US=$(date +%s%6N)
@@ -155,6 +162,7 @@ Retrieve a complete trace by its trace ID. No query parameters.
 Response: Same structure as trace search but with a single trace in `data` array.
 
 Error response (trace not found):
+
 ```json
 {
   "data": [],
@@ -168,6 +176,7 @@ Error response (trace not found):
 Note: This returns an HTTP 200 with errors in the response body, NOT an HTTP 404 status code.
 
 Example:
+
 ```bash
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces/abc123def456789" | jq .
@@ -189,6 +198,7 @@ Get service dependency graph showing call relationships.
 | `lookback` | Yes | Unix milliseconds | - | Duration to look back from `endTs` (e.g., `3600000` = 1 hour) |
 
 Response:
+
 ```json
 {
   "data": [
@@ -204,6 +214,7 @@ Response:
 ```
 
 Example:
+
 ```bash
 END_MS=$(date +%s%3N)
 curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
@@ -240,10 +251,12 @@ Trace search and dependencies use DIFFERENT timestamp units:
 | `maxDuration` | traces search | String duration | - | `10s`, `5s` |
 
 Response timestamps:
+
 - `spans[].startTime` — Unix MICROSECONDS
 - `spans[].duration` — MICROSECONDS
 
 Conversion helpers:
+
 ```bash
 # Current time in microseconds (for trace search)
 date +%s%6N
@@ -258,10 +271,10 @@ date -d "2026-03-07T09:00:00Z" +%s%6N
 date +%s%3N
 ```
 
-
 ## Jaeger Span Reference Types
 
 Spans link to parent spans via `references`:
+
 ```json
 {
   "references": [
