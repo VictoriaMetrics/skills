@@ -7,7 +7,6 @@ These skills help AI agents and automation tools understand, operate, and troubl
 
 | Plugin | Skills | Purpose |
 |--------|--------|---------|
-| [victoriametrics](plugins/victoriametrics/) | — | **Bundle** — installs query + diagnostics |
 | [query](plugins/query/) | victoriametrics-query, victorialogs-query, victoriatraces-query, alertmanager-query | Query metrics, logs, traces, and alerts |
 | [diagnostics](plugins/diagnostics/) | vm-trace-analyzer, investigating-with-observability | Query trace analysis and multi-signal investigations |
 
