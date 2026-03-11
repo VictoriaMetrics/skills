@@ -3,8 +3,8 @@
 Full endpoint details for Prometheus-compatible AlertManager HTTP API v2.
 
 Base URL: `$VM_ALERTMANAGER_URL`
-- Prod: `https://alertmanager.example.com`
-- Local: N/A (typically not deployed locally)
+
+- Example: `https://alertmanager.example.com`
 
 Source: Prometheus AlertManager OpenAPI v2 specification.
 
@@ -198,6 +198,7 @@ Create a new silence.
 ```
 
 **Notes:**
+
 - To update an existing silence, include `"id": "existing-uuid"` in the request body
 - `startsAt` and `endsAt` are RFC3339 timestamps
 - At least one matcher is required
@@ -269,7 +270,6 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/silence/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 ```
 
-
 ## HTTP Methods and Content-Type Summary
 
 | Endpoint | Method | Content-Type (Request) | Content-Type (Response) |
@@ -297,11 +297,13 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ## Availability and Fallback
 
 AlertManager runs as an in-cluster pod. It may be unavailable due to:
+
 - Pod crashloop or OOM
 - DNS resolution failure
 - Not deployed in local/dev environments
 
 **Fallback strategy:**
+
 - For alert data: use `$VM_METRICS_URL/api/v1/alerts` (VictoriaMetrics built-in alert API)
 - For alert rules: use `$VM_METRICS_URL/api/v1/rules`
 - Silences and inhibition state have no fallback — they are AlertManager-only features
