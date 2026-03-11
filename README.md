@@ -21,7 +21,7 @@ Add the marketplace source:
 ### Install skills
 
 ```
-/plugin install query@victoriametrics-tools # Query VictoriaStack components and Alertmanager
+/plugin install query@victoriametrics-tools # Query VictoriaStack components and AlertManager
 /plugin install diagnostics@victoriametrics-tools # Troubleshooting and query trace analysis
 ```
 
