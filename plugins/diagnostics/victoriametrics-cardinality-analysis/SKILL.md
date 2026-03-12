@@ -22,15 +22,13 @@ messages as labels, SQL text as labels, UUIDs as labels).
 
 ## Environment
 
-| Variable | Purpose |
-|----------|---------|
-| `$VM_METRICS_URL` | vmselect base URL (includes tenant path, e.g. `.../select/0/prometheus`) |
-| `$VM_AUTH_HEADER` | Auth header for API calls |
-
-All curl commands use conditional auth:
+Uses the same env vars as the `victoriametrics-query` skill:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} "$VM_METRICS_URL/..."
+# $VM_METRICS_URL - base URL
+#   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
+#   single: export VM_METRICS_URL="http://localhost:8428"
+# $VM_AUTH_HEADER - auth header (empty if no auth is required)
 ```
 
 ## Workflow

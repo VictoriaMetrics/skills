@@ -15,6 +15,17 @@ allowed-tools: Bash(curl:*), Bash(jq:*)
 
 Identify metrics that are being ingested but never (or rarely) queried, then recommend concrete actions to stop wasting storage and ingestion resources.
 
+## Environment
+
+Uses the same env vars as the `victoriametrics-query` skill:
+
+```bash
+# $VM_METRICS_URL - base URL
+#   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
+#   single: export VM_METRICS_URL="http://localhost:8428"
+# $VM_AUTH_HEADER - auth header (empty if no auth is required)
+```
+
 ## How It Works
 
 VictoriaMetrics tracks how many times each metric name is fetched during queries, and when it was last fetched. This is done via the `metric_names_stats` API, available since v1.113.0. By comparing what's ingested against what's actually queried, you can find metrics that nobody uses and safely drop them.
@@ -159,6 +170,7 @@ Present findings in this format:
 **Never queried (with active series)**: [count] metrics, ~[M] series ([percentage]% of active series)
 **Never queried (historical only, 0 series)**: [count] metrics — will expire with retention, no action needed
 **Rarely queried (1-5 times)**: [count] metrics ([percentage]%)
+**Queried long time ago (30+ days)**: [count] metrics ([percentage]%)
 
 ### Never-Queried Active Metrics by Category
 
@@ -218,14 +230,3 @@ Always communicate these caveats:
 - **Dashboard queries aren't tracked until viewed**: A metric used in a Grafana dashboard that nobody opened during the collection window will appear as "unused." Consider querying Grafana's API for dashboard definitions to cross-reference.
 - **Some metrics are queried seasonally**: Monthly or quarterly reports will show low query counts. The longer the collection window, the more reliable the results.
 - **Never drop `up` or meta-metrics**: Metrics like `up`, `scrape_duration_seconds`, `scrape_samples_scraped` are essential for monitoring health even if rarely queried directly.
-
-## Environment
-
-Uses the same env vars as the `victoriametrics-query` skill:
-
-```bash
-# $VM_METRICS_URL - base URL
-#   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
-#   single: export VM_METRICS_URL="http://localhost:8428"
-# $VM_AUTH_HEADER - auth header (set for prod, empty for local)
-```
