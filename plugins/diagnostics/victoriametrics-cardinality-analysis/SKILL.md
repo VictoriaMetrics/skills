@@ -7,7 +7,7 @@ description: >
   series reduction, unused metrics, high cardinality labels, TSDB optimization, storage cost reduction,
   metric cleanup, too many time series, or wants to reduce cardinality. Also trigger when discussing
   relabeling strategies, streaming aggregation opportunities, or "which metrics can we drop".
-allowed-tools: Bash(curl:*)
+allowed-tools: Bash(curl:*), Bash(jq:*)
 ---
 
 # VictoriaMetrics Cardinality Analysis
