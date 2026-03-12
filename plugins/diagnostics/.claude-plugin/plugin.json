@@ -1,7 +1,7 @@
 {
   "name": "diagnostics",
   "description": "Diagnostic tools for VictoriaMetrics. Analyze query execution traces for performance bottlenecks and orchestrate multi-signal investigations across metrics, logs, traces, and alerts.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "VictoriaMetrics"
   },
