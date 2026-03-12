@@ -1,5 +1,5 @@
 ---
-name: victoriametrics-unused-metrics
+name: victoriametrics-unused-metrics-analysis
 description: >
   Find unused and rarely-queried metrics in VictoriaMetrics using the metric_names_stats API,
   then suggest optimization actions (drop rules, relabel configs). Use this skill when the user
