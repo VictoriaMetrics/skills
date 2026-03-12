@@ -12,13 +12,34 @@ These skills help AI agents and automation tools understand, operate, and troubl
 
 ## Installation
 
+### Via [skills.sh](https://skills.sh)
+
+Install all skills:
+
+```
+npx skills add VictoriaMetrics/skills
+```
+
+Install a specific skill:
+
+```
+npx skills add VictoriaMetrics/skills --skill victoriametrics-query
+npx skills add VictoriaMetrics/skills --skill victorialogs-query
+npx skills add VictoriaMetrics/skills --skill victoriatraces-query
+npx skills add VictoriaMetrics/skills --skill alertmanager-query
+npx skills add VictoriaMetrics/skills --skill investigating-with-observability
+npx skills add VictoriaMetrics/skills --skill vm-trace-analyzer
+```
+
+### Via Claude Code plugin marketplace
+
 Add the marketplace source:
 
 ```
 /plugin marketplace add VictoriaMetrics/skills
 ```
 
-### Install skills
+Install plugins:
 
 ```
 /plugin install query@victoriametrics-tools # Query VictoriaStack components and AlertManager
