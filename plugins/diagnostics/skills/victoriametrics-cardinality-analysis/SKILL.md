@@ -50,7 +50,7 @@ TSDB status queries and as series selectors to label queries.
 **Query 1 — Yesterday's series (captures recently churned series):**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/tsdb?topN=50&date=$(date -d 'yesterday' +%Y-%m-%d)" | jq '.data'
 ```
 
@@ -59,7 +59,7 @@ Queries yesterday's stats — broader than today (includes series that may have 
 **Query 2 — Today's active series:**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/tsdb?topN=50" | jq '.data'
 ```
 
@@ -68,7 +68,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 ```bash
 for label in pod instance container path url user_id request_id session_id trace_id le name; do
   echo "=== focusLabel=$label ===" && \
-  curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+  curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
     "$VM_METRICS_URL/api/v1/status/tsdb?topN=20&focusLabel=$label" | \
     jq --arg l "$label" '{label: $l, focus: .data.seriesCountByFocusLabelValue}'
 done
@@ -86,21 +86,21 @@ done
 **Query 1 — Never-queried metrics:**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?le=0&limit=500" | jq '.'
 ```
 
 **Query 2 — Rarely-queried metrics (≤5 total queries):**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?le=5&limit=500" | jq '.'
 ```
 
 **Query 3 — Stats overview (tracking period):**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?limit=1" | \
   jq '{statsCollectedSince: .statsCollectedSince, statsCollectedRecordsTotal: .statsCollectedRecordsTotal}'
 ```
@@ -111,7 +111,7 @@ Note this in the return and proceed — the analysis can still work with TSDB st
 **Query 4 — Cross-check: are "unused" metrics referenced in alerting rules?**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/rules" | jq '[.data.groups[].rules[].query]'
 ```
 
@@ -135,7 +135,7 @@ All data comes from the TSDB status endpoint — do NOT use `/api/v1/labels` or 
 **Query 1 — Label cardinality overview (unique value counts + series counts):**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/tsdb?topN=50" | \
   jq '{labelValueCountByLabelName: .data.labelValueCountByLabelName, seriesCountByLabelName: .data.seriesCountByLabelName}'
 ```
@@ -149,7 +149,7 @@ For each label with >100 unique values from Query 1, fetch sample values:
 ```bash
 for label in <top labels from Query 1>; do
   echo "=== focusLabel=$label ===" && \
-  curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+  curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
     "$VM_METRICS_URL/api/v1/status/tsdb?topN=20&focusLabel=$label" | \
     jq --arg l "$label" '{label: $l, topValues: .data.seriesCountByFocusLabelValue}'
 done
@@ -160,7 +160,7 @@ done
 **Query 3 — High-cardinality label-value pairs:**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/tsdb?topN=50" | \
   jq '.data.seriesCountByLabelValuePair'
 ```

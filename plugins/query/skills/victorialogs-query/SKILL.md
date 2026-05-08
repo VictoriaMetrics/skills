@@ -25,7 +25,7 @@ Query VictoriaLogs HTTP API directly via curl. Covers log search, stats queries,
 All curl commands use conditional auth:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_LOGS_URL/select/logsql/query?query=*&start=2026-03-07T00:00:00Z&limit=10"
 ```
 
@@ -46,12 +46,12 @@ When `VM_AUTH_HEADER` is empty, `-H` flag is omitted automatically.
 
 ```bash
 # Basic query (last hour, limit 100)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error' \
   "$VM_LOGS_URL/select/logsql/query?start=2026-03-07T00:00:00Z&limit=100"
 
 # With time range and field selection
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error' \
   "$VM_LOGS_URL/select/logsql/query?start=2026-03-07T00:00:00Z&end=2026-03-07T12:00:00Z&limit=50&fields=_time,_msg,level"
 ```
@@ -64,7 +64,7 @@ Response: JSON Lines (one JSON object per line). Pipe through `jq -s .` to colle
 
 ```bash
 # Count errors by level at a point in time
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} | stats by (level) count() as total' \
   "$VM_LOGS_URL/select/logsql/stats_query?time=2026-03-07T09:00:00Z" | jq .
 ```
@@ -77,7 +77,7 @@ Response: Prometheus-compatible JSON format.
 
 ```bash
 # Error count over time with 1h steps
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error | stats count() as total' \
   "$VM_LOGS_URL/select/logsql/stats_query_range?start=2026-03-07T00:00:00Z&end=2026-03-07T12:00:00Z&step=1h" | jq .
 ```
@@ -90,7 +90,7 @@ Response: Prometheus matrix format.
 
 ```bash
 # Log volume over time
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/hits?start=2026-03-07T00:00:00Z&end=2026-03-07T12:00:00Z&step=1h" | jq .
 ```
@@ -101,7 +101,7 @@ Parameters: `query` (required), `start` (required), `end`, `step` (required), `f
 
 ```bash
 # Discover field value distributions
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/facets?start=2026-03-07T00:00:00Z&end=2026-03-07T12:00:00Z" | jq .
 ```
@@ -114,12 +114,12 @@ Parameters: `query` (required), `start` (required), `end`. Returns most frequent
 
 ```bash
 # Discover non-stream field names
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/field_names?start=2026-03-07T00:00:00Z" | jq .
 
 # Get values for a specific field
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/field_values?start=2026-03-07T00:00:00Z&field=level&limit=20" | jq .
 ```
@@ -128,12 +128,12 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 
 ```bash
 # Discover stream field names (e.g., namespace, pod)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=*' \
   "$VM_LOGS_URL/select/logsql/stream_field_names?start=2026-03-07T00:00:00Z" | jq .
 
 # Get values for a stream field
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=*' \
   "$VM_LOGS_URL/select/logsql/stream_field_values?start=2026-03-07T00:00:00Z&field=namespace" | jq .
 ```
@@ -142,12 +142,12 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 
 ```bash
 # List log stream identifiers
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/streams?start=2026-03-07T00:00:00Z&limit=20" | jq .
 
 # List stream IDs
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/stream_ids?start=2026-03-07T00:00:00Z" | jq .
 ```
@@ -235,22 +235,22 @@ All times use RFC3339 format: `2026-03-07T09:00:00Z`. Unix timestamps are NOT su
 
 ```bash
 # Quick error check for a namespace (last hour)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error' \
   "$VM_LOGS_URL/select/logsql/query?start=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)&limit=20"
 
 # Error rate over time
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error | stats count() as errors' \
   "$VM_LOGS_URL/select/logsql/stats_query_range?start=2026-03-07T00:00:00Z&step=1h" | jq .
 
 # Discover all namespaces with logs
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=*' \
   "$VM_LOGS_URL/select/logsql/stream_field_values?start=2026-03-07T00:00:00Z&field=namespace" | jq .
 
 # Search by trace ID in logs
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=trace_id:"abc123def456"' \
   "$VM_LOGS_URL/select/logsql/query?start=2026-03-07T00:00:00Z&limit=50"
 ```

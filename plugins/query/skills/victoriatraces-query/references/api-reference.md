@@ -29,7 +29,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services" | jq '.data[]'
 ```
 
@@ -52,7 +52,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services/my-service/operations" | jq '.data[]'
 ```
 
@@ -133,24 +133,24 @@ Examples:
 # Basic search — timestamps in microseconds (16 digits)
 END_US=$(date +%s%6N)
 START_US=$((END_US - 3600000000))
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=my-service&start=${START_US}&end=${END_US}&limit=20" | jq .
 
 # With operation filter
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=my-service&operation=GET+/api/health&start=${START_US}&end=${END_US}&limit=10" | jq .
 
 # With duration filter
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=my-service&start=${START_US}&end=${END_US}&minDuration=1s&maxDuration=10s&limit=20" | jq .
 
 # With tag filter — Jaeger JSON format (URL-encoded)
-curl -s -G ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s -G ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'tags={"http.status_code":"500"}' \
   "$VM_TRACES_URL/api/traces?service=my-service&start=${START_US}&end=${END_US}&limit=20" | jq .
 
 # With tag filter — VictoriaTraces extended format (key=value, space-separated)
-curl -s -G ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s -G ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'tags=error=unset resource_attr:service.namespace=production' \
   "$VM_TRACES_URL/api/traces?service=my-service&start=${START_US}&end=${END_US}&limit=20" | jq .
 ```
@@ -178,11 +178,11 @@ Note: This returns an HTTP 200 with errors in the response body, NOT an HTTP 404
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces/abc123def456789" | jq .
 
 # Check if trace was found
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces/abc123def456789" | jq 'if .errors then "NOT FOUND: " + .errors[0].msg else "Found: " + (.data[0].spans | length | tostring) + " spans" end'
 ```
 
@@ -217,11 +217,11 @@ Example:
 
 ```bash
 END_MS=$(date +%s%3N)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/dependencies?endTs=${END_MS}&lookback=3600000" | jq '.data[]'
 
 # Last 24 hours
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/dependencies?endTs=${END_MS}&lookback=86400000" | jq '.data[] | "\(.parent) -> \(.child) (\(.callCount) calls)"'
 ```
 

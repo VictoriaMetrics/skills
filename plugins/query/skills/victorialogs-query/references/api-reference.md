@@ -32,12 +32,12 @@ Response (JSON Lines — one object per line):
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error' \
   "$VM_LOGS_URL/select/logsql/query?start=2026-03-07T00:00:00Z&limit=100"
 
 # Collect JSON Lines into array for jq processing
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error' \
   "$VM_LOGS_URL/select/logsql/query?start=2026-03-07T00:00:00Z&limit=100" | jq -s .
 ```
@@ -76,7 +76,7 @@ Response (Prometheus-compatible JSON):
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} | stats by (level) count() as total' \
   "$VM_LOGS_URL/select/logsql/stats_query?time=2026-03-07T09:00:00Z" | jq .
 ```
@@ -112,7 +112,7 @@ Response (Prometheus matrix format):
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"} error | stats count() as total' \
   "$VM_LOGS_URL/select/logsql/stats_query_range?start=2026-03-07T00:00:00Z&end=2026-03-07T12:00:00Z&step=1h" | jq .
 ```
@@ -142,7 +142,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/hits?start=2026-03-07T00:00:00Z&end=2026-03-07T12:00:00Z&step=1h" | jq .
 ```
@@ -184,7 +184,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/facets?start=2026-03-07T00:00:00Z&end=2026-03-07T12:00:00Z" | jq .
 ```
@@ -213,7 +213,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/field_names?start=2026-03-07T00:00:00Z" | jq '.[] | .name'
 ```
@@ -243,7 +243,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/field_values?start=2026-03-07T00:00:00Z&field=level&limit=20" | jq .
 ```
@@ -271,7 +271,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=*' \
   "$VM_LOGS_URL/select/logsql/stream_field_names?start=2026-03-07T00:00:00Z" | jq '.[] | .name'
 ```
@@ -300,7 +300,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=*' \
   "$VM_LOGS_URL/select/logsql/stream_field_values?start=2026-03-07T00:00:00Z&field=namespace" | jq '.[] | .value'
 ```
@@ -327,7 +327,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/streams?start=2026-03-07T00:00:00Z&limit=20" | jq .
 ```
@@ -345,7 +345,7 @@ List internal stream IDs.
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="myapp"}' \
   "$VM_LOGS_URL/select/logsql/stream_ids?start=2026-03-07T00:00:00Z" | jq .
 ```

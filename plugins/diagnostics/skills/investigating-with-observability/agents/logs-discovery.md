@@ -21,7 +21,7 @@ You are the **Logs Discovery Agent**. Your role is to discover and query Victori
 All curl commands use conditional auth — when `VM_AUTH_HEADER` is empty, the `-H` flag is omitted automatically:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_LOGS_URL/select/logsql/..."
 ```
 
@@ -48,7 +48,7 @@ Run these steps in order. Substitute `<RFC3339>` with the investigation start ti
 Discover which stream fields exist (e.g., `namespace`, `pod`, `container`, `app`). Stream fields are indexed and fast to filter on.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=*' \
   "$VM_LOGS_URL/select/logsql/stream_field_names?start=<RFC3339>" | jq .
 ```
@@ -58,7 +58,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Discover what namespace values exist. This confirms the correct namespace identifier before filtering.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=*' \
   "$VM_LOGS_URL/select/logsql/stream_field_values?start=<RFC3339>&field=namespace" | jq .
 ```
@@ -70,7 +70,7 @@ If the target uses a different stream field for namespacing (e.g., `kubernetes.p
 Facets return value distributions for ALL fields in a single call. Use a namespace filter to scope to the target.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="<NAMESPACE>"}' \
   "$VM_LOGS_URL/select/logsql/facets?start=<RFC3339>&end=<RFC3339>" | jq .
 ```
@@ -82,7 +82,7 @@ This reveals log levels, pod names, container names, and any other structured fi
 Discover non-indexed fields present in log messages (e.g., `level`, `error`, `trace_id`, `request_id`).
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="<NAMESPACE>"}' \
   "$VM_LOGS_URL/select/logsql/field_names?start=<RFC3339>" | jq .
 ```
@@ -92,7 +92,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Query for error-level log entries to establish what errors exist and what they look like.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="<NAMESPACE>"} (error OR warn OR fatal OR exception) -"vm_slow_query_stats"' \
   "$VM_LOGS_URL/select/logsql/query?start=<RFC3339>&end=<RFC3339>&limit=20" \
   | jq -s '.[] | {time: ._time, level: .level, msg: ._msg}'
@@ -133,7 +133,7 @@ LogsQL is space-separated (AND by default). Pipes use `|`.
 Use `stats_query` with `time`. The query MUST contain a `| stats` pipe.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="<NAMESPACE>"} | stats by (level) count() as total' \
   "$VM_LOGS_URL/select/logsql/stats_query?time=<RFC3339>" | jq .
 ```
@@ -143,7 +143,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Use `stats_query_range` with `start`, `end`, and `step`. The query MUST contain a `| stats` pipe.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query={namespace="<NAMESPACE>"} error | stats count() as errors' \
   "$VM_LOGS_URL/select/logsql/stats_query_range?start=<RFC3339>&end=<RFC3339>&step=1h" | jq .
 ```
