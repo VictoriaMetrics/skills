@@ -43,7 +43,7 @@ Phase 3: Report findings and suggest fixes
 Before doing anything, check that the metric names stats tracker is returning data. The feature is enabled by default since v1.113.0, but may have been disabled or the instance may be too old.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?limit=3" | jq .
 ```
 
@@ -75,7 +75,7 @@ These are metrics with `queryRequests: 0` — tracked but never fetched by any q
 Use a high limit to capture all of them — the default 1000 is often not enough:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?le=0&limit=50000" | jq .
 ```
 
@@ -97,7 +97,7 @@ The goal is to find metrics that ARE being actively ingested but NOT being queri
 
 # CORRECT — counts only the specific never-queried metric names:
 # Build a regex from the actual never-queried names in that prefix group
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=count({__name__=~"container_blkio_device_usage_total|container_file_descriptors|container_last_seen|container_memory_failcnt|container_sockets|container_tasks_state"})' \
   "$VM_METRICS_URL/api/v1/query" | jq '.data.result[0].value[1]'
 ```
@@ -119,7 +119,7 @@ Do NOT spend time individually querying hundreds of historical metrics with 0 se
 These are metrics queried only a handful of times — possibly from one-off exploration rather than active use.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?le=5&limit=50000" | jq .
 ```
 
@@ -131,11 +131,11 @@ This gives context for what percentage of metrics are unused and how much impact
 
 ```bash
 # Total tracked metric names
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?limit=1" | jq '.statsCollectedRecordsTotal'
 
 # Total active time series
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=count({__name__=~".+"})' \
   "$VM_METRICS_URL/api/v1/query" | jq '.data.result[0].value[1]'
 ```

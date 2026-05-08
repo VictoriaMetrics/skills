@@ -38,7 +38,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/query?query=up&time=2026-03-07T09:00:00Z" | jq .
 ```
 
@@ -74,7 +74,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=rate(http_requests_total[5m])' \
   "$VM_METRICS_URL/api/v1/query_range?start=2026-03-07T00:00:00Z&end=2026-03-07T12:00:00Z&step=5m" | jq .
 ```
@@ -103,7 +103,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/labels" | jq '.data[]'
 ```
 
@@ -130,11 +130,11 @@ Examples:
 
 ```bash
 # All values for "namespace" label
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/label/namespace/values" | jq '.data[]'
 
 # Values filtered by series
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]={job="kubelet"}' \
   "$VM_METRICS_URL/api/v1/label/namespace/values" | jq '.data[]'
 ```
@@ -164,7 +164,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]={namespace="myapp"}' \
   "$VM_METRICS_URL/api/v1/series?limit=20" | jq '.data[]'
 ```
@@ -196,7 +196,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/metadata?metric=http_request&limit=10" | jq .
 ```
 
@@ -228,7 +228,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/alerts" | jq '.data.alerts[]'
 ```
 
@@ -262,7 +262,7 @@ Response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/rules" | jq '.data.groups[] | {name, rules: [.rules[] | select(.state != "inactive") | .name]}'
 ```
 
@@ -283,7 +283,7 @@ Key fields in response:
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/tsdb" | jq '{total: .data.totalSeries, top_metrics: .data.seriesCountByMetricName[:5]}'
 ```
 
@@ -294,7 +294,7 @@ Currently executing queries. No parameters.
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/active_queries" | jq .
 ```
 
@@ -310,7 +310,7 @@ Most frequent and slowest queries.
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/top_queries?topN=10" | jq '.data.topByCount[:5]'
 ```
 
@@ -321,7 +321,7 @@ Version information. No parameters.
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/buildinfo" | jq .
 ```
 
@@ -348,7 +348,7 @@ Response: JSON lines (one JSON object per line, NOT wrapped in standard API resp
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]=http_requests_total' \
   -d 'start=2026-03-07T00:00:00Z' -d 'end=2026-03-07T12:00:00Z' \
   -d 'reduce_mem_usage=1' \
@@ -389,11 +389,11 @@ Example:
 
 ```bash
 # Metrics queried 0 or 1 times (candidates for removal)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?limit=50&le=1" | jq .
 
 # Metrics matching prefix
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?match_pattern=vm_&limit=20" | jq .
 ```
 
@@ -404,7 +404,7 @@ Root-level endpoint. Returns runtime flags that differ from defaults.
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "${VM_METRICS_URL%%/select/*}/flags" | jq .
 ```
 
@@ -446,7 +446,7 @@ Test how metric relabeling rules transform a metric.
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   -d 'metric=foo{bar="baz"}' \
   -d 'relabel_config=- target_label: cluster
   replacement: dev' \
@@ -465,7 +465,7 @@ Test which downsampling rules match a given metric.
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   -d 'metric=foo{bar="baz"}' \
   -d 'downsampling_period=30d:5m,180d:1h' \
   "${VM_METRICS_URL%%/select/*}/downsampling-filters-debug"
@@ -483,7 +483,7 @@ Test which retention policy applies to a given metric.
 Example:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   -d 'metric=foo{bar="baz"}' \
   -d 'retention_period=2y,{env="dev"}:30d' \
   "${VM_METRICS_URL%%/select/*}/retention-filters-debug"
@@ -517,7 +517,7 @@ Note: All three debug endpoints return HTML. For interactive use, access VMUI at
 For POST requests, use `--data-urlencode` with curl to properly encode query parameters containing special characters:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=sum(rate(http_requests_total{code=~"5.."}[5m])) by (namespace)' \
   "$VM_METRICS_URL/api/v1/query"
 ```

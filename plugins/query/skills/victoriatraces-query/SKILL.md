@@ -27,7 +27,7 @@ IMPORTANT: The Jaeger API lives under `/select/jaeger/api/...`, NOT root `/api/.
 All curl commands use conditional auth:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services" | jq .
 ```
 
@@ -48,7 +48,7 @@ When `VM_AUTH_HEADER` is empty, `-H` flag is omitted automatically.
 ### List Services
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services" | jq '.data[]'
 ```
 
@@ -57,7 +57,7 @@ No parameters. Returns all traced service names. Always start here to discover w
 ### Service Operations
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services/my-service/operations" | jq '.data[]'
 ```
 
@@ -67,19 +67,19 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 
 ```bash
 # Basic search (last hour, limit 20) — timestamps in microseconds (16 digits)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=my-service&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&limit=20" | jq .
 
 # With operation and duration filter
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=my-service&operation=GET+/api/health&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&minDuration=100ms&limit=20" | jq .
 
 # With tag filter (Jaeger JSON format)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=my-service&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&tags=%7B%22http.status_code%22%3A%22500%22%7D&limit=20" | jq .
 
 # With tag filter (VictoriaTraces extended format — key=value pairs, space-separated)
-curl -s -G ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s -G ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'tags=http.status_code=500 resource_attr:service.namespace=production' \
   "$VM_TRACES_URL/api/traces?service=my-service&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&limit=20" | jq .
 ```
@@ -89,7 +89,7 @@ Parameters: `service` (required), `operation`, `start` (Unix µs), `end` (Unix �
 ### Get Trace by ID
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces/abc123def456789" | jq .
 ```
 
@@ -99,7 +99,7 @@ Returns full trace with all spans. If trace not found, response contains `"error
 
 ```bash
 # Dependencies for the last hour
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/dependencies?endTs=$(date +%s%3N)&lookback=3600000" | jq '.data[]'
 ```
 
@@ -164,20 +164,20 @@ date +%s%3N
 
 ```bash
 # Full discovery workflow: services -> operations -> traces
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} "$VM_TRACES_URL/api/services" | jq '.data[]'
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} "$VM_TRACES_URL/api/services/my-service/operations" | jq '.data[]'
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} "$VM_TRACES_URL/api/traces?service=my-service&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&limit=10" | jq '.data[] | .traceID'
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_TRACES_URL/api/services" | jq '.data[]'
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_TRACES_URL/api/services/my-service/operations" | jq '.data[]'
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_TRACES_URL/api/traces?service=my-service&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&limit=10" | jq '.data[] | .traceID'
 
 # Find slow traces (> 5 seconds)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=my-service&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&minDuration=5s&limit=20" | jq '.data[] | {traceID: .traceID, spans: (.spans | length)}'
 
 # Look up a trace ID found in logs
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces/abc123def456789" | jq '.data[].spans[] | {operation: .operationName, duration_ms: (.duration / 1000), service: .processID}'
 
 # Map service dependencies (last 24 hours) — dependencies use milliseconds
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/dependencies?endTs=$(date +%s%3N)&lookback=86400000" | jq '.data[]'
 ```
 

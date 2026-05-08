@@ -18,7 +18,7 @@ You are the Traces Discovery Agent. Your role is to discover and query VictoriaT
 Conditional auth pattern — omits `-H` automatically when `VM_AUTH_HEADER` is empty:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services" | jq .
 ```
 
@@ -53,7 +53,7 @@ Run these in order. Always start with services — you must know the service nam
 ### Step 1: List All Services
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services" | jq '.data[]'
 ```
 
@@ -63,7 +63,7 @@ No parameters. Returns all traced service names. Always start here.
 
 ```bash
 # <service> is a PATH parameter — substitute the actual service name
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/services/<service>/operations" | jq '.data[]'
 ```
 
@@ -73,7 +73,7 @@ Run for the target service identified in Step 1.
 
 ```bash
 # endTs uses MILLISECONDS (13 digits), lookback uses MILLISECONDS
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/dependencies?endTs=$(date +%s%3N)&lookback=3600000" | jq '.data[]'
 ```
 
@@ -85,19 +85,19 @@ Returns edges between services showing call relationships. Adjust `lookback` for
 
 ```bash
 # Basic search — last 1 hour, limit 20 (times in MICROSECONDS, 16 digits)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=<service>&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&limit=20" | jq .
 
 # With operation filter
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=<service>&operation=<operation>&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&limit=20" | jq .
 
 # With minimum duration (string format: "1s", "500ms")
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=<service>&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&minDuration=1s&limit=20" | jq .
 
 # With maximum duration
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces?service=<service>&start=$(($(date +%s%6N) - 3600000000))&end=$(date +%s%6N)&maxDuration=500ms&limit=20" | jq .
 ```
 
@@ -106,7 +106,7 @@ Optional parameters: `operation`, `minDuration` (string, e.g. `"1s"`), `maxDurat
 ### Step 5: Get Trace by ID
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_TRACES_URL/api/traces/<traceID>" | jq .
 ```
 

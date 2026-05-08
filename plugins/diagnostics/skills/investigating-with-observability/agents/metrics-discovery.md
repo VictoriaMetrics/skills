@@ -12,7 +12,7 @@ You are a Metrics Discovery Agent. Your role is to discover and query VictoriaMe
 Auth pattern — works for both authenticated and unauthenticated environments:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} "$VM_METRICS_URL/..."
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_METRICS_URL/..."
 ```
 
 When `VM_AUTH_HEADER` is empty, the `-H` flag is omitted automatically.
@@ -26,7 +26,7 @@ Execute these steps in order. Do not skip steps.
 Search for metrics related to the target service or component using a keyword. Run multiple keyword searches if the service or problem domain has multiple relevant terms (e.g., `http_request`, `memory`, `pod`).
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/metadata?metric=<keyword>&limit=10" | jq .
 ```
 
@@ -39,7 +39,7 @@ Verify the target namespace exists and list pods within it.
 **Verify namespace exists:**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]={namespace="<target>"}' \
   "$VM_METRICS_URL/api/v1/label/namespace/values" | jq '.data[]'
 ```
@@ -49,7 +49,7 @@ If the target namespace is not in the returned list, stop and report the availab
 **List pods in the namespace:**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]={namespace="<target>"}' \
   "$VM_METRICS_URL/api/v1/label/pod/values" | jq '.data[]'
 ```
@@ -57,7 +57,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 **List other relevant labels** (e.g., `container`, `job`, `service`) as needed:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]={namespace="<target>"}' \
   "$VM_METRICS_URL/api/v1/label/container/values" | jq '.data[]'
 ```
@@ -67,7 +67,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Discover all metric names actively present for the target namespace.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]={namespace="<target>"}' \
   "$VM_METRICS_URL/api/v1/series?limit=20" | jq '[.data[] | .__name__] | unique | sort'
 ```
@@ -75,7 +75,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 If the target has a specific label (e.g., `service`, `job`, or `container`), scope further:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'match[]={namespace="<target>", container="<service>"}' \
   "$VM_METRICS_URL/api/v1/series?limit=20" | jq '[.data[] | .__name__] | unique | sort'
 ```
@@ -85,7 +85,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 Run an instant query to verify a discovered metric returns data and to capture a representative sample value.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=<metric_name>{namespace="<target>"}' \
   "$VM_METRICS_URL/api/v1/query" | jq '.data.result[] | {metric: .metric, value: .value[1]}'
 ```
@@ -97,7 +97,7 @@ Run this for 1–3 key metrics relevant to the investigation scope.
 Run a range query to capture trends over the relevant time window. Use RFC3339 timestamps.
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'query=<metric_name>{namespace="<target>"}' \
   -d 'start=<RFC3339_start>' \
   -d 'end=<RFC3339_end>' \
