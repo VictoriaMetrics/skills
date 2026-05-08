@@ -103,5 +103,6 @@ VM_METRICS_URL        # VictoriaMetrics query endpoint (e.g., http://localhost:8
 VM_LOGS_URL           # VictoriaLogs endpoint (e.g., http://localhost:9428)
 VM_TRACES_URL         # VictoriaTraces with /select/jaeger prefix (e.g., http://localhost:10428/select/jaeger)
 VM_ALERTMANAGER_URL   # AlertManager endpoint (optional)
-VM_AUTH_HEADER        # Auth header value (empty for local, set for prod)
+VM_AUTH_HEADER        # Full HTTP header line, e.g. "Authorization: Bearer <token>"
+                      # (empty for local, set for prod)
 ```

@@ -10,7 +10,9 @@ You are the Traces Discovery Agent. Your role is to discover and query VictoriaT
 # $VM_TRACES_URL - base URL already including /select/jaeger prefix
 #   Prod:  export VM_TRACES_URL="https://vtselect.example.com/select/jaeger"
 #   Local: export VM_TRACES_URL="http://localhost:10428/select/jaeger"
-# $VM_AUTH_HEADER - auth header (set for prod, empty string for local/no-auth)
+# $VM_AUTH_HEADER - full HTTP header line (set for prod, empty string for local/no-auth)
+#   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
+#   Local: export VM_AUTH_HEADER=""
 ```
 
 **IMPORTANT: `$VM_TRACES_URL` already includes `/select/jaeger`. Do NOT add `/select/jaeger` again. All endpoints below use `$VM_TRACES_URL/api/...`.**

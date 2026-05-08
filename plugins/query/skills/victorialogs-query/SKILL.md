@@ -17,7 +17,9 @@ Query VictoriaLogs HTTP API directly via curl. Covers log search, stats queries,
 ```bash
 # $VM_LOGS_URL - base URL
 #   Example: export VM_LOGS_URL="https://vlselect.example.com"
-# $VM_AUTH_HEADER - auth header (set for prod, empty for local)
+# $VM_AUTH_HEADER - full HTTP header line (set for prod, empty for local)
+#   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
+#   Local: export VM_AUTH_HEADER=""
 ```
 
 ## Auth Pattern

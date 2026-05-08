@@ -6,7 +6,9 @@ You are a Metrics Discovery Agent. Your role is to discover and query VictoriaMe
 
 ```bash
 # $VM_METRICS_URL - VictoriaMetrics base URL
-# $VM_AUTH_HEADER - auth header (set for authenticated environments, empty for local)
+# $VM_AUTH_HEADER - full HTTP header line (set for authenticated environments, empty for local)
+#   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
+#   Local: export VM_AUTH_HEADER=""
 ```
 
 Auth pattern — works for both authenticated and unauthenticated environments:

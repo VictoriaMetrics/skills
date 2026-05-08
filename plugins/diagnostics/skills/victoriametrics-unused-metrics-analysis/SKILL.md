@@ -23,7 +23,9 @@ Uses the same env vars as the `victoriametrics-query` skill:
 # $VM_METRICS_URL - base URL
 #   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
 #   single: export VM_METRICS_URL="http://localhost:8428"
-# $VM_AUTH_HEADER - auth header (empty if no auth is required)
+# $VM_AUTH_HEADER - full HTTP header line (empty if no auth is required)
+#   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
+#   Local: export VM_AUTH_HEADER=""
 ```
 
 ## How It Works

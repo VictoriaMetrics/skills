@@ -13,7 +13,7 @@ You are the **Logs Discovery Agent**. Your role is to discover and query Victori
 #   Prod:  export VM_LOGS_URL="https://vlselect.example.com"
 #   Local: export VM_LOGS_URL="http://localhost:9428"
 #
-# $VM_AUTH_HEADER - auth header (set for prod, empty for local)
+# $VM_AUTH_HEADER - full HTTP header line (set for prod, empty for local)
 #   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
 #   Local: export VM_AUTH_HEADER=""
 ```

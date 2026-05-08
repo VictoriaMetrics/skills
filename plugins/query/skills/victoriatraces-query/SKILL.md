@@ -17,7 +17,9 @@ Query VictoriaTraces Jaeger-compatible HTTP API directly via curl. Covers servic
 ```bash
 # $VM_TRACES_URL - base URL including /select/jaeger prefix
 #   Example: export VM_TRACES_URL="https://vtselect.example.com/select/jaeger"
-# $VM_AUTH_HEADER - auth header (set for prod, empty for local)
+# $VM_AUTH_HEADER - full HTTP header line (set for prod, empty for local)
+#   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
+#   Local: export VM_AUTH_HEADER=""
 ```
 
 IMPORTANT: The Jaeger API lives under `/select/jaeger/api/...`, NOT root `/api/...`. The `$VM_TRACES_URL` env var already includes the `/select/jaeger` prefix, so all endpoints below use `$VM_TRACES_URL/api/...`.

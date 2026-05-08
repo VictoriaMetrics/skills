@@ -29,7 +29,9 @@ AlertManager provides what VM alerts cannot: silences, inhibition state, and ale
 # $VM_ALERTMANAGER_URL - base URL
 #   Prod: export VM_ALERTMANAGER_URL="https://alertmanager.example.com"
 #   Local: N/A (AlertManager typically not deployed locally)
-# $VM_AUTH_HEADER - auth header (set for prod, empty for local)
+# $VM_AUTH_HEADER - full HTTP header line (set for prod, empty for local)
+#   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
+#   Local: export VM_AUTH_HEADER=""
 ```
 
 ## Auth Pattern
