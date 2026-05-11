@@ -13,7 +13,7 @@ You are a signal-gathering subagent. Your role is to check the current alert sta
 All curl commands use conditional auth — when `VM_AUTH_HEADER` is empty the `-H` flag is omitted automatically:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} "$VM_METRICS_URL/..."
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_METRICS_URL/..."
 ```
 
 ## Task
@@ -23,7 +23,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} "$VM_METRICS_URL/..."
 Query the VictoriaMetrics alerts endpoint. This is always reachable and is the primary source of firing/pending alert state:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_METRICS_URL/api/v1/alerts" | jq '.data.alerts[]'
 ```
 
@@ -35,7 +35,7 @@ AlertManager is an in-cluster pod. Test connectivity first with a 5-second timeo
 
 ```bash
 curl -sf -o /dev/null -w "%{http_code}" --max-time 5 \
-  ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+  ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/alerts"
 ```
 
@@ -43,11 +43,11 @@ curl -sf -o /dev/null -w "%{http_code}" --max-time 5 \
 
 ```bash
 # Active alerts (not silenced, not inhibited)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/alerts?active=true&silenced=false&inhibited=false" | jq .
 
 # Active silences
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/silences" \
   | jq '[.[] | select(.status.state == "active")]'
 ```

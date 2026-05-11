@@ -68,16 +68,16 @@ List alerts with optional filters.
 
 ```bash
 # All active, non-silenced alerts
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/alerts?active=true&silenced=false&inhibited=false" | jq .
 
 # Filter by label
-curl -s -G ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s -G ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'filter=severity="critical"' \
   "$VM_ALERTMANAGER_URL/api/v2/alerts" | jq .
 
 # Multiple filters
-curl -s -G ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s -G ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   --data-urlencode 'filter=alertname="HighMemory"' \
   --data-urlencode 'filter=namespace="production"' \
   "$VM_ALERTMANAGER_URL/api/v2/alerts" | jq .
@@ -147,11 +147,11 @@ List all silences.
 
 ```bash
 # All silences
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/silences" | jq .
 
 # Active silences only
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/silences" | jq '[.[] | select(.status.state == "active")]'
 ```
 
@@ -207,7 +207,7 @@ Create a new silence.
 
 ```bash
 # Create a 2-hour silence for a specific alert
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   -X POST -H "Content-Type: application/json" \
   -d '{
     "matchers": [{"name": "alertname", "value": "HighMemory", "isRegex": false, "isEqual": true}],
@@ -219,7 +219,7 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/silences" | jq .
 
 # Regex silence — silence all alerts matching pattern
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   -X POST -H "Content-Type: application/json" \
   -d '{
     "matchers": [{"name": "alertname", "value": "High.*", "isRegex": true, "isEqual": true}],
@@ -246,7 +246,7 @@ Get a specific silence by ID.
 **Example:**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/silence/a1b2c3d4-e5f6-7890-abcd-ef1234567890" | jq .
 ```
 
@@ -265,7 +265,7 @@ Expire (delete) a silence.
 **Example:**
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   -X DELETE \
   "$VM_ALERTMANAGER_URL/api/v2/silence/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 ```
@@ -285,10 +285,10 @@ curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
 
 ```bash
 # Conditional auth (works for both prod and local)
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} "$VM_ALERTMANAGER_URL/api/v2/alerts"
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_ALERTMANAGER_URL/api/v2/alerts"
 
 # POST with auth and JSON body
-curl -s ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   -X POST -H "Content-Type: application/json" \
   -d '{"matchers": [...], "startsAt": "...", "endsAt": "...", "createdBy": "...", "comment": "..."}' \
   "$VM_ALERTMANAGER_URL/api/v2/silences"
@@ -311,7 +311,7 @@ AlertManager runs as an in-cluster pod. It may be unavailable due to:
 **Connectivity check:**
 
 ```bash
-curl -sf -o /dev/null -w "%{http_code}" ${VM_AUTH_HEADER:+-H "$VM_AUTH_HEADER"} \
+curl -sf -o /dev/null -w "%{http_code}" ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/alerts" && echo " OK" || echo " UNREACHABLE"
 ```
 
