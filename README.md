@@ -8,7 +8,7 @@ These skills help AI agents and automation tools understand, operate, and troubl
 | Plugin | Skills | Purpose |
 |--------|--------|---------|
 | [query](plugins/query/) | victoriametrics-query, victorialogs-query, victoriatraces-query, alertmanager-query | Query metrics, logs, traces, and alerts |
-| [diagnostics](plugins/diagnostics/) | vm-trace-analyzer, investigating-with-observability, victoriametrics-cardinality-analysis, victoriametrics-unused-metrics-analysis | Query trace analysis, multi-signal investigations, cardinality optimization, unused metric detection |
+| [diagnostics](plugins/diagnostics/) | vm-trace-analyzer, investigating-with-observability, victoriametrics-cardinality-analysis, victoriametrics-unused-metrics-analysis, stream-aggregation-helper | Query trace analysis, multi-signal investigations, cardinality optimization, unused metric detection, stream aggregation design |
 
 ## Installation
 
@@ -31,6 +31,7 @@ npx skills add VictoriaMetrics/skills --skill investigating-with-observability
 npx skills add VictoriaMetrics/skills --skill vm-trace-analyzer
 npx skills add VictoriaMetrics/skills --skill victoriametrics-cardinality-analysis
 npx skills add VictoriaMetrics/skills --skill victoriametrics-unused-metrics-analysis
+npx skills add VictoriaMetrics/skills --skill stream-aggregation-helper
 ```
 
 ### Via Claude Code plugin marketplace
@@ -67,6 +68,7 @@ Install plugins:
 | investigating-with-observability | Orchestrate multi-signal investigations across metrics, logs, and traces with structured phases |
 | victoriametrics-cardinality-analysis | Analyze time series cardinality to find optimization opportunities — unused metrics, high-cardinality labels, histogram bloat |
 | victoriametrics-unused-metrics-analysis | Find unused and rarely-queried metrics, then suggest drop rules and relabel configs to reduce waste |
+| stream-aggregation-helper | Design vmagent stream aggregation rules — gate, intake, pick interval/output/by-without, generate YAML, plan rollout, verify with `vm_streamaggr_*` |
 
 ## Usage
 
@@ -81,6 +83,7 @@ Once installed, skills are available as slash commands and are also triggered au
 /diagnostics:investigating-with-observability - structured multi-signal investigation
 /diagnostics:victoriametrics-cardinality-analysis  - cardinality analysis and optimization recommendations
 /diagnostics:victoriametrics-unused-metrics-analysis - find unused metrics and suggest drop rules
+/diagnostics:stream-aggregation-helper             - design and verify stream aggregation rules
 ```
 
 **Example prompts that trigger skills:**
@@ -93,6 +96,7 @@ Once installed, skills are available as slash commands and are also triggered au
 - "Pod X is crash looping — investigate" → `investigating-with-observability`
 - "Which metrics have the highest cardinality?" → `victoriametrics-cardinality-analysis`
 - "Find metrics that nobody queries" → `victoriametrics-unused-metrics-analysis`
+- "Help me aggregate this high-cardinality metric at vmagent" → `stream-aggregation-helper`
 
 ## Environment Variables
 
