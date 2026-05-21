@@ -260,7 +260,7 @@ produce nonsense. **Counter → `total`/`rate_*`/`increase*`. Gauge → everythi
 A single vmagent handles **millions of samples/sec** on modest hardware. Scale only when:
 
 - CPU usage on the aggregating vmagent stays >70% with current load.
-- `vm_streamaggr_flush_duration_seconds` approaches the aggregation interval.
+- `histogram_quantile(0.99, sum(rate(vm_streamaggr_flush_duration_seconds_bucket[1m])) by (vmrange))` approaches the aggregation interval.
 - Memory pressure from many active output series (each output series ≈ small constant of RAM; with
   `enable_windows: true` it doubles).
 - Input rate is sharded across many sources and consolidating in one vmagent is impractical.
@@ -334,7 +334,7 @@ Override only when there's a concrete reason:
 ### 3g. Resolution vs. SA interval — replacing `sum(rate(X[5m]))`
 
 A common request is "I have `sum(rate(req_total[5m]))` in my dashboards and alerts — please
-pre-aggregate it." The naïve mapping is to match the SA interval to the rate window:
+pre-aggregate it." The naive mapping is to match the SA interval to the rate window:
 
 ```yaml
 - match: 'req_total'
@@ -396,8 +396,65 @@ window with the matching `*_over_time` wrapper at query time.
 
 ## Phase 4: Config + Rollout
 
-Produce a single YAML block and a phased rollout. Use `<details>` blocks like other skills in this
-plugin.
+Produce a single, self-contained plan that the user can read top-to-bottom and apply without
+clicking through to docs. The expected output shape — adapt to the actual rule, omit sections that
+don't apply:
+
+> **Stream aggregation plan: `http_duration_p99`**
+>
+> | Decision | Choice | Why |
+> |----------|--------|-----|
+> | Placement | Existing tier-2 vmagent | Already in path; tier-1 shards by `kubernetes_namespace`, tier-2 aggregates within it |
+> | Interval | `1m` | 2× scrape (15s); consumers use `[5m]` windows — reconstruct rolling avg at query time (Phase 3g) |
+> | Output | `rate_sum` + `enable_windows: true` | Histogram → recommended pattern; consumers want p99 |
+> | Grouping | `without: [pod, instance, path]` | Drop per-source + raw URL; keep `kubernetes_namespace` (shard key), `method`, `status_code`, `route`, `le` |
+> | Input retention | default (matched raw dropped from remote write after cutover) | No consumer needs raw post-cutover |
+> | Series before → after | ~5.3M → **~8.8K** (measured via `count(sum by (...)(rate(...[5m])))`) | ~600× reduction |
+> | HA / sharding | Tier-2 has 2 HA replicas; identical config, identical labels, dedup at storage | Output is `rate_sum` (HA-safe). Do not tag replicas. |
+>
+> <details>
+> <summary>Stream aggregation config — paste into <code>-streamAggr.config</code> (or <code>VMAgent.spec.streamAggrConfig.rules</code>)</summary>
+>
+> ```yaml
+> - name: http_duration_p99
+>   match: 'http_request_duration_seconds_bucket'
+>   interval: 1m
+>   enable_windows: true
+>   without: [pod, instance, path]
+>   outputs: [rate_sum]
+> ```
+> </details>
+>
+> <details>
+> <summary>Rollout</summary>
+>
+> 1. Deploy config with `-streamAggr.keepInput=true` (or `streamAggrConfig.keepInput: true` on the CRD). Reload (`kill -SIGHUP …` or `/-/reload`).
+> 2. Wait ≥1 hour, then run the cross-check query (verification block below). Aggregated p99 should track raw p99 within a few percent.
+> 3. Remove `-streamAggr.keepInput=true`. Reload. Matched raw is now dropped from remote-write by default — cardinality reduction is realized.
+> 4. Migrate dashboards / alerts to `http_request_duration_seconds_bucket:1m_without_instance_path_pod_rate_sum`. Suffix labels are sorted alphabetically.
+> </details>
+>
+> <details>
+> <summary>Verification queries</summary>
+>
+> ```promql
+> # Cross-check: raw vs aggregated p99 (run during stage 2 with keepInput on)
+> histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+>
+> histogram_quantile(0.99,
+>   sum by (le) (
+>     avg_over_time(http_request_duration_seconds_bucket:1m_without_instance_path_pod_rate_sum[5m])
+>   )
+> )
+>
+> # Watch on vmagent /metrics
+> # - histogram_quantile(0.99, sum(rate(vm_streamaggr_flush_duration_seconds_bucket{name="http_duration_p99"}[1m])) by (vmrange)) << 1m
+> # - vm_streamaggr_counter_resets_total — flat (spikes = HA collision)
+> # - count({__name__="http_request_duration_seconds_bucket:1m_without_instance_path_pod_rate_sum"}) ≈ 8800
+> ```
+> </details>
+
+Adapt the structure for the actual scenario: a gauge with `quantiles(0.95)` won't need `enable_windows`; a downsampling rule replacing a recording rule may skip the cross-check (no raw to compare to). Drop the HA row if the deployment is single-replica.
 
 ### 4a. Generate the config
 
@@ -544,7 +601,7 @@ histogram_quantile(0.99, sum by (le) (avg_over_time(http_request_duration_second
 ### 5c. Sanity checks
 
 - Output series count from `count({__name__="<aggregated_name>"})` ≈ your Phase 4d estimate.
-- No alerts about `vm_streamaggr_flush_duration_seconds` approaching interval.
+- No alerts about `histogram_quantile(0.99, sum(rate(vm_streamaggr_flush_duration_seconds_bucket[1m])) by (vmrange))` approaching interval.
 - For `total`/`increase` outputs: counter is monotonic; resets only on vmagent restart (which is
   expected unless `flush_on_shutdown: true` is set).
 
