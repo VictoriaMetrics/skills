@@ -9,6 +9,7 @@ These skills help AI agents and automation tools understand, operate, and troubl
 |--------|--------|---------|
 | [query](plugins/query/) | victoriametrics-query, victorialogs-query, victoriatraces-query, alertmanager-query | Query metrics, logs, traces, and alerts |
 | [diagnostics](plugins/diagnostics/) | vm-trace-analyzer, investigating-with-observability, victoriametrics-cardinality-analysis, victoriametrics-unused-metrics-analysis, stream-aggregation-helper | Query trace analysis, multi-signal investigations, cardinality optimization, unused metric detection, stream aggregation design |
+| [vmanomaly](plugins/vmanomaly/) | vmanomaly-query, vmanomaly-config, vmanomaly-review | Operate the vmanomaly API, build and tune anomaly-detection configurations, and review detection quality |
 
 ## Installation
 
@@ -32,6 +33,9 @@ npx skills add VictoriaMetrics/skills --skill vm-trace-analyzer
 npx skills add VictoriaMetrics/skills --skill victoriametrics-cardinality-analysis
 npx skills add VictoriaMetrics/skills --skill victoriametrics-unused-metrics-analysis
 npx skills add VictoriaMetrics/skills --skill stream-aggregation-helper
+npx skills add VictoriaMetrics/skills --skill vmanomaly-query
+npx skills add VictoriaMetrics/skills --skill vmanomaly-config
+npx skills add VictoriaMetrics/skills --skill vmanomaly-review
 ```
 
 ### Via Claude Code plugin marketplace
@@ -47,6 +51,7 @@ Install plugins:
 ```
 /plugin install query@victoriametrics-tools # Query VictoriaStack components and AlertManager
 /plugin install diagnostics@victoriametrics-tools # Troubleshooting and query trace analysis
+/plugin install vmanomaly@victoriametrics-tools # Configure, operate, tune, and review anomaly detection
 ```
 
 ## Skills
@@ -70,6 +75,18 @@ Install plugins:
 | victoriametrics-unused-metrics-analysis | Find unused and rarely-queried metrics, then suggest drop rules and relabel configs to reduce waste |
 | stream-aggregation-helper | Design vmagent stream aggregation rules — gate, intake, pick interval/output/by-without, generate YAML, plan rollout, verify with `vm_streamaggr_*` |
 
+### vmanomaly plugin
+
+| Skill | Purpose |
+|-------|---------|
+| vmanomaly-query | Operate vmanomaly v1.30+ HTTP APIs for health, compatibility, schemas, profiling, shared autotune, validation, and bounded detection tasks |
+| vmanomaly-config | Triage static alerting versus ML, select and tune a model from real time-series characteristics, and produce validated deployment artifacts |
+| vmanomaly-review | Audit an existing configuration against runtime schemas and real data, reproduce detections, and verify proposed fixes |
+
+Each vmanomaly skill is independently installable. When query or diagnostics skills are also
+available, the vmanomaly workflows can use them for metric/log discovery, cardinality checks,
+existing-alert review, and multi-signal incident correlation.
+
 ## Usage
 
 Once installed, skills are available as slash commands and are also triggered automatically when Claude detects a matching request:
@@ -84,6 +101,9 @@ Once installed, skills are available as slash commands and are also triggered au
 /diagnostics:victoriametrics-cardinality-analysis  - cardinality analysis and optimization recommendations
 /diagnostics:victoriametrics-unused-metrics-analysis - find unused metrics and suggest drop rules
 /diagnostics:stream-aggregation-helper             - design and verify stream aggregation rules
+/vmanomaly:vmanomaly-query                         - inspect and operate the vmanomaly API
+/vmanomaly:vmanomaly-config                        - build and tune a validated anomaly configuration
+/vmanomaly:vmanomaly-review                        - audit an existing anomaly configuration
 ```
 
 **Example prompts that trigger skills:**
@@ -97,6 +117,9 @@ Once installed, skills are available as slash commands and are also triggered au
 - "Which metrics have the highest cardinality?" → `victoriametrics-cardinality-analysis`
 - "Find metrics that nobody queries" → `victoriametrics-unused-metrics-analysis`
 - "Help me aggregate this high-cardinality metric at vmagent" → `stream-aggregation-helper`
+- "Profile this query and choose a vmanomaly model" → `vmanomaly-config`
+- "Check whether my persisted vmanomaly state is compatible with v1.30" → `vmanomaly-query`
+- "Review why this anomaly model produces too many detections" → `vmanomaly-review`
 
 ## Environment Variables
 
@@ -107,6 +130,9 @@ VM_METRICS_URL        # VictoriaMetrics query endpoint (e.g., http://localhost:8
 VM_LOGS_URL           # VictoriaLogs endpoint (e.g., http://localhost:9428)
 VM_TRACES_URL         # VictoriaTraces with /select/jaeger prefix (e.g., http://localhost:10428/select/jaeger)
 VM_ALERTMANAGER_URL   # AlertManager endpoint (optional)
+VM_ANOMALY_URL        # vmanomaly endpoint, including path prefix if configured (e.g., http://localhost:8490)
 VM_AUTH_HEADER        # Full HTTP header line, e.g. "Authorization: Bearer <token>"
-                      # (empty for local, set for prod)
+                      # (used by query/diagnostic skills; empty for local, set for prod)
+VM_CURL_CONFIG        # vmanomaly plugin: mode-0600 curl config containing the auth header
+                      # (use /dev/null for unauthenticated local instances)
 ```

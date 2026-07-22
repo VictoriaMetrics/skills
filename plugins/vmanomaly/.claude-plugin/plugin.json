@@ -1,0 +1,20 @@
+{
+  "name": "vmanomaly",
+  "description": "Configure, operate, and review VictoriaMetrics Anomaly Detection. Profile time series, select and tune models, validate configurations, run bounded detection tasks, and check persisted-state compatibility.",
+  "version": "1.0.0",
+  "author": {
+    "name": "VictoriaMetrics"
+  },
+  "homepage": "https://victoriametrics.com/products/victoriametrics-anomaly-detection/",
+  "repository": "https://github.com/VictoriaMetrics/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "victoriametrics",
+    "vmanomaly",
+    "anomaly-detection",
+    "autotune",
+    "forecasting",
+    "machine-learning",
+    "observability"
+  ]
+}
