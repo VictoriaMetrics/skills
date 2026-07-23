@@ -131,8 +131,61 @@ VM_LOGS_URL           # VictoriaLogs endpoint (e.g., http://localhost:9428)
 VM_TRACES_URL         # VictoriaTraces with /select/jaeger prefix (e.g., http://localhost:10428/select/jaeger)
 VM_ALERTMANAGER_URL   # AlertManager endpoint (optional)
 VM_ANOMALY_URL        # vmanomaly endpoint, including path prefix if configured (e.g., http://localhost:8490)
-VM_AUTH_HEADER        # Full HTTP header line, e.g. "Authorization: Bearer <token>"
-                      # (used by query/diagnostic skills; empty for local, set for prod)
-VM_CURL_CONFIG        # vmanomaly plugin: mode-0600 curl config containing the auth header
-                      # (use /dev/null for unauthenticated local instances)
+VM_CURL_CONFIG        # Path to a mode-0600 curl config file containing the auth header
+                      # (leave unset for unauthenticated local instances - defaults to /dev/null)
 ```
+
+### Authentication setup
+
+Skills pass credentials to `curl` through a [curl config file](https://curl.se/docs/manpage.html#-K)
+instead of command-line arguments. This keeps tokens out of process listings, shell history, and
+agent transcripts. Every command uses the same pattern:
+
+```bash
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s "$VM_METRICS_URL/api/v1/query?query=up"
+```
+
+For unauthenticated local instances no setup is needed: when `VM_CURL_CONFIG` is unset, curl reads
+`/dev/null` and sends no auth header.
+
+For authenticated instances, create a config file readable only by you and point `VM_CURL_CONFIG` at it:
+
+```bash
+mkdir -p "$HOME/.config/victoriametrics"
+touch "$HOME/.config/victoriametrics/curl.conf"
+chmod 0600 "$HOME/.config/victoriametrics/curl.conf"
+cat > "$HOME/.config/victoriametrics/curl.conf" <<'EOF'
+header = "Authorization: Bearer <token>"
+EOF
+export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+```
+
+For Basic auth, use `user = "username:password"` instead of the `header` line.
+
+### Migrating from VM_AUTH_HEADER
+
+Earlier versions of these skills read the auth header from the `VM_AUTH_HEADER` environment variable
+(`export VM_AUTH_HEADER="Authorization: Bearer <token>"`) and passed it to curl via `-H`. That exposed
+the token in process listings, shell history, and agent transcripts, so skills now read it from a curl
+config file instead. `VM_AUTH_HEADER` is no longer used by any skill.
+
+To migrate:
+
+1. Move the header line into a mode-0600 curl config file:
+
+   ```bash
+   mkdir -p "$HOME/.config/victoriametrics"
+   touch "$HOME/.config/victoriametrics/curl.conf"
+   chmod 0600 "$HOME/.config/victoriametrics/curl.conf"
+   printf 'header = "%s"\n' "$VM_AUTH_HEADER" > "$HOME/.config/victoriametrics/curl.conf"
+   ```
+
+2. Replace `VM_AUTH_HEADER` with `VM_CURL_CONFIG` wherever you export it (shell profile, CI secrets,
+   agent configuration):
+
+   ```bash
+   export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+   unset VM_AUTH_HEADER
+   ```
+
+3. If you never set `VM_AUTH_HEADER` (unauthenticated local instances), no action is needed.

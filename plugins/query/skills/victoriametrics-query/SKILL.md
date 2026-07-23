@@ -19,20 +19,20 @@ Query VictoriaMetrics HTTP API directly via curl. Covers instant/range queries, 
 # $VM_METRICS_URL - base URL
 #   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
 #   single: export VM_METRICS_URL="http://localhost:8428"
-# $VM_AUTH_HEADER - full HTTP header line (set for prod, empty for local)
-#   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
-#   Local: export VM_AUTH_HEADER=""
+# $VM_CURL_CONFIG - curl config file with auth header (set for remote, unset for local)
+#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   Local:  leave unset (defaults to /dev/null - no auth)
 ```
 
 ## Auth Pattern
 
-All curl commands use conditional auth — works for both prod and local:
+All curl commands load auth from a curl config file - works for both remote and local:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_METRICS_URL/api/v1/query?query=up" | jq .
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s "$VM_METRICS_URL/api/v1/query?query=up" | jq .
 ```
 
-When `VM_AUTH_HEADER` is empty, `-H` flag is omitted automatically.
+When `VM_CURL_CONFIG` is unset, curl reads `/dev/null` and sends no auth header. When set, it must point to a mode-0600 curl config file containing `header = "Authorization: Bearer <token>"`. Never print its contents.
 
 ## Core Endpoints
 
@@ -40,11 +40,11 @@ When `VM_AUTH_HEADER` is empty, `-H` flag is omitted automatically.
 
 ```bash
 # Query at current time
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/query?query=up" | jq .
 
 # Query at specific time
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/query?query=up&time=2026-03-07T09:00:00Z" | jq .
 ```
 
@@ -53,7 +53,7 @@ Parameters: `query` (required), `time` (optional, RFC3339 or Unix seconds), `ste
 ### Range Query
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/query_range?query=rate(http_requests_total[5m])&start=2026-03-07T00:00:00Z&end=2026-03-07T12:00:00Z&step=5m" | jq .
 ```
 
@@ -63,15 +63,15 @@ Parameters: `query` (required), `start` (required), `end` (optional), `step` (re
 
 ```bash
 # All label names
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/labels" | jq '.data[]'
 
 # Label values (label_name is a PATH parameter)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/label/namespace/values" | jq '.data[]'
 
 # Label values filtered by series matcher
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   --data-urlencode 'match[]={job="kubelet"}' \
   "$VM_METRICS_URL/api/v1/label/namespace/values" | jq '.data[]'
 ```
@@ -80,7 +80,7 @@ curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
 
 ```bash
 # Find series matching selector
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   --data-urlencode 'match[]={namespace="myapp"}' \
   "$VM_METRICS_URL/api/v1/series?limit=20" | jq '.data[].__name__'
 ```
@@ -91,7 +91,7 @@ Parameters: `match[]` (required), `start`, `end`, `limit`
 
 ```bash
 # Search by metric name keyword
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/metadata?metric=http_request&limit=10" | jq .
 ```
 
@@ -101,11 +101,11 @@ Parameters: `metric` (search keyword), `limit`.
 
 ```bash
 # All firing/pending alerts
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/alerts" | jq '.data.alerts[]'
 
 # All alerting and recording rules
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/rules" | jq '.data.groups[]'
 ```
 
@@ -113,19 +113,19 @@ curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
 
 ```bash
 # TSDB cardinality stats
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/status/tsdb" | jq .
 
 # Currently executing queries
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/status/active_queries" | jq .
 
 # Most frequent/slowest queries
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/status/top_queries?topN=10" | jq .
 
 # Version info
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/status/buildinfo" | jq .
 ```
 
@@ -133,13 +133,13 @@ curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
 
 ```bash
 # Export raw samples as JSON lines (one JSON object per line)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   --data-urlencode 'match[]=http_requests_total' \
   -d 'start=2026-03-07T00:00:00Z' -d 'end=2026-03-07T12:00:00Z' \
   "$VM_METRICS_URL/api/v1/export" | head -5
 
 # Export with reduced memory usage (for large exports)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   --data-urlencode 'match[]={namespace="myapp"}' \
   -d 'start=2026-03-07T00:00:00Z' -d 'end=2026-03-07T01:00:00Z' \
   -d 'reduce_mem_usage=1' \
@@ -156,7 +156,7 @@ Also available: `/api/v1/export/csv` (CSV format), `/api/v1/export/native` (bina
 
 ```bash
 # Total number of active time series
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/series/count" | jq .
 ```
 
@@ -166,15 +166,15 @@ Note: can be slow on large databases and may return slightly inflated values.
 
 ```bash
 # Which metrics are being queried, and how often
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?limit=20" | jq .
 
 # Metrics queried <= N times (find unused/rarely-used metrics)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?limit=50&le=1" | jq .
 
 # Filter by metric name pattern
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/status/metric_names_stats?match_pattern=vm_&limit=20" | jq .
 ```
 
@@ -184,7 +184,7 @@ Parameters: `limit` (max results), `le` (max query count threshold — find metr
 
 ```bash
 # View non-default runtime flags (returns plain text, one flag per line — NOT JSON)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "${VM_METRICS_URL%%/select/*}/flags"
 ```
 
@@ -196,11 +196,11 @@ These are ROOT-level endpoints, NOT under `/api/v1/`. On cluster mode, strip the
 
 ```bash
 # Expand WITH expressions (returns text, not JSON)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "${VM_METRICS_URL%%/select/*}/expand-with-exprs?query=WITH(x=up)x"
 
 # Prettify MetricsQL query (returns JSON)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "${VM_METRICS_URL%%/select/*}/prettify-query?query=rate(x[5m])" | jq .
 ```
 
@@ -212,20 +212,20 @@ Root-level endpoints for debugging relabeling, downsampling, and retention confi
 
 ```bash
 # Debug metric relabeling rules — test how a metric is transformed
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   -d 'metric=foo{bar="baz"}' \
   -d 'relabel_config=- target_label: cluster
   replacement: dev' \
   "${VM_METRICS_URL%%/select/*}/metric-relabel-debug"
 
 # Debug downsampling filters — test which downsampling rules match a metric
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   -d 'metric=foo{bar="baz"}' \
   -d 'downsampling_period=30d:5m,180d:1h' \
   "${VM_METRICS_URL%%/select/*}/downsampling-filters-debug"
 
 # Debug retention filters — test which retention policy applies to a metric
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   -d 'metric=foo{bar="baz"}' \
   -d 'retention_period=2y,{env="dev"}:30d' \
   "${VM_METRICS_URL%%/select/*}/retention-filters-debug"
@@ -260,16 +260,16 @@ All times accept RFC3339 (`2026-03-07T09:00:00Z`) or Unix seconds (`1709769600`)
 
 ```bash
 # Check if a metric exists
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/query?query=count({__name__=~\"http_request.*\"})" | jq '.data.result[].value[1]'
 
 # Get all namespaces with active pods
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   --data-urlencode 'match[]={__name__="kube_pod_info"}' \
   "$VM_METRICS_URL/api/v1/label/namespace/values" | jq '.data[]'
 
 # Rate of errors over last hour
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   --data-urlencode 'query=sum(rate(http_requests_total{code=~"5.."}[5m])) by (namespace)' \
   "$VM_METRICS_URL/api/v1/query" | jq '.data.result[] | {ns: .metric.namespace, rate: .value[1]}'
 ```
@@ -279,7 +279,7 @@ curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
 ```bash
 # Check current environment
 echo "VM_METRICS_URL: $VM_METRICS_URL"
-echo "VM_AUTH_HEADER: $( [ -n "$VM_AUTH_HEADER" ] && echo '(set)' || echo '(empty)' )"
+echo "VM_CURL_CONFIG: ${VM_CURL_CONFIG:-(unset - no auth)}"
 ```
 
 ## Important Notes

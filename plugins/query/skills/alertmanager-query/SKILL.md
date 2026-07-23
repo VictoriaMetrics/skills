@@ -17,7 +17,7 @@ AlertManager runs as an in-cluster pod and may be unavailable (crashloop, DNS fa
 
 ```bash
 # Fallback: firing/pending alerts from VictoriaMetrics (always available)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/alerts" | jq '.data.alerts[]'
 ```
 
@@ -27,22 +27,22 @@ AlertManager provides what VM alerts cannot: silences, inhibition state, and ale
 
 ```bash
 # $VM_ALERTMANAGER_URL - base URL
-#   Prod: export VM_ALERTMANAGER_URL="https://alertmanager.example.com"
-#   Local: N/A (AlertManager typically not deployed locally)
-# $VM_AUTH_HEADER - full HTTP header line (set for prod, empty for local)
-#   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
-#   Local: export VM_AUTH_HEADER=""
+#   Remote: export VM_ALERTMANAGER_URL="https://alertmanager.example.com"
+#   Local:  N/A (AlertManager typically not deployed locally)
+# $VM_CURL_CONFIG - curl config file with auth header (set for remote, unset for local)
+#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   Local:  leave unset (defaults to /dev/null - no auth)
 ```
 
 ## Auth Pattern
 
-All curl commands use conditional auth:
+All curl commands load auth from a curl config file:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_ALERTMANAGER_URL/api/v2/alerts" | jq .
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s "$VM_ALERTMANAGER_URL/api/v2/alerts" | jq .
 ```
 
-When `VM_AUTH_HEADER` is empty, `-H` flag is omitted automatically.
+When `VM_CURL_CONFIG` is unset, curl reads `/dev/null` and sends no auth header. When set, it must point to a mode-0600 curl config file containing `header = "Authorization: Bearer <token>"`. Never print its contents.
 
 ## Core Endpoints
 
@@ -50,20 +50,20 @@ When `VM_AUTH_HEADER` is empty, `-H` flag is omitted automatically.
 
 ```bash
 # All alerts (active, silenced, inhibited)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_ALERTMANAGER_URL/api/v2/alerts" | jq .
 
 # Only active (not silenced, not inhibited)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_ALERTMANAGER_URL/api/v2/alerts?active=true&silenced=false&inhibited=false" | jq .
 
 # Filter by label matcher (URL-encode the matcher)
-curl -s -G ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s -G \
   --data-urlencode 'filter=alertname="HighMemory"' \
   "$VM_ALERTMANAGER_URL/api/v2/alerts" | jq .
 
 # Filter by receiver
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_ALERTMANAGER_URL/api/v2/alerts?receiver=slack-critical" | jq .
 ```
 
@@ -73,11 +73,11 @@ Parameters: `active` (bool, default true), `silenced` (bool, default true), `inh
 
 ```bash
 # All silences
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_ALERTMANAGER_URL/api/v2/silences" | jq .
 
 # Filter silences by matcher
-curl -s -G ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s -G \
   --data-urlencode 'filter=alertname="HighMemory"' \
   "$VM_ALERTMANAGER_URL/api/v2/silences" | jq .
 ```
@@ -88,7 +88,7 @@ Parameters: `filter` (string array, matcher expressions)
 
 ```bash
 # Note: singular "silence" in path (not "silences")
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_ALERTMANAGER_URL/api/v2/silence/{silenceID}" | jq .
 ```
 
@@ -97,7 +97,7 @@ Replace `{silenceID}` with the UUID.
 ### Create Silence
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   -X POST -H "Content-Type: application/json" \
   -d '{
     "matchers": [
@@ -117,7 +117,7 @@ Returns `{"silenceID": "uuid-here"}`. Matcher fields: `name` (label name), `valu
 
 ```bash
 # Note: singular "silence" in path
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   -X DELETE \
   "$VM_ALERTMANAGER_URL/api/v2/silence/{silenceID}"
 ```
@@ -148,15 +148,15 @@ All timestamps use RFC3339 format: `2026-03-07T00:00:00Z`
 
 ```bash
 # Quick connectivity check
-curl -sf -o /dev/null -w "%{http_code}" ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf -o /dev/null -w "%{http_code}" \
   "$VM_ALERTMANAGER_URL/api/v2/alerts" && echo " OK" || echo " UNREACHABLE"
 
 # Count firing alerts
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_ALERTMANAGER_URL/api/v2/alerts?active=true&silenced=false&inhibited=false" | jq 'length'
 
 # Silence an alert for 2 hours from now
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   -X POST -H "Content-Type: application/json" \
   -d "$(jq -n --arg start "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg end "$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)" \
@@ -166,7 +166,7 @@ curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
   "$VM_ALERTMANAGER_URL/api/v2/silences" | jq .
 
 # Check if a specific alert is silenced
-curl -s -G ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s -G \
   --data-urlencode 'filter=alertname="TargetAlert"' \
   "$VM_ALERTMANAGER_URL/api/v2/alerts?active=false&silenced=true" | jq 'length'
 ```
@@ -176,11 +176,7 @@ curl -s -G ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
 ```bash
 # Check current environment
 echo "VM_ALERTMANAGER_URL: $VM_ALERTMANAGER_URL"
-if [ -n "$VM_AUTH_HEADER" ]; then
-  echo "VM_AUTH_HEADER: (set, length=${#VM_AUTH_HEADER})"
-else
-  echo "VM_AUTH_HEADER: (unset or empty)"
-fi
+echo "VM_CURL_CONFIG: ${VM_CURL_CONFIG:-(unset - no auth)}"
 ```
 
 ## Important Notes
