@@ -5,7 +5,7 @@ description: >
   and operations, searching traces by service/operation/duration/tags, retrieving traces by ID,
   or mapping service dependencies. Triggers on: trace queries, span search, trace ID lookup,
   service discovery, operation discovery, service dependencies, distributed tracing, Jaeger API.
-allowed-tools: Bash(curl:*)
+allowed-tools: Bash(curl:*), Bash(jq:*), Bash(date:*)
 ---
 
 # VictoriaTraces Query

@@ -5,7 +5,7 @@ description: >
   discovering log fields/streams, analyzing log hit patterns, or exploring log facets.
   Triggers on: log queries, LogsQL, log search, log stats, field discovery, stream discovery,
   log facets, log hits, log field values.
-allowed-tools: Bash(curl:*)
+allowed-tools: Bash(curl:*), Bash(jq:*), Bash(date:*)
 ---
 
 # VictoriaLogs Query
