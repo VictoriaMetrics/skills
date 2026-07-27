@@ -132,12 +132,14 @@ population counts from them.
 
 Model-fit expectations:
 
-- complex trend/calendar/holiday/shift profile: `temporal_envelope` is the preferred first check;
-- simple non-seasonal heavy-tailed profile: `mad_online`;
-- stable/light-tailed simple profile: `zscore_online`;
-- dependency anomaly: `temporal_envelope_multivariate`, with Isolation Forest as an offline
-  feature-space alternative;
-- Prophet is a fallback for its specific regressors/decomposition or when validation favors it.
+- non-trivial trend/calendar/holiday/shift profile, or uncertainty about a simple stationary
+  baseline: `temporal_envelope` is the preferred first check;
+- confirmed simple, non-seasonal, heavy-tailed or outlier-contaminated profile: `mad_online`;
+- confirmed simple, stable/light-tailed profile: `zscore_online`;
+- dependency anomaly: `temporal_envelope_multivariate`.
+
+Do not recommend an offline model as a fallback. When reviewing one, treat it as a legacy or
+explicitly requested choice and compare it with the corresponding online model.
 
 ### 6. Reproduce with a bounded task
 

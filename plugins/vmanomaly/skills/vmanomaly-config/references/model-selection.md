@@ -8,7 +8,7 @@ override static examples.
 - [Decision tree](#decision-tree)
 - [Temporal Envelope](#temporal-envelope)
 - [Simple online models](#simple-online-models)
-- [Offline and specialized alternatives](#offline-and-specialized-alternatives)
+- [Legacy offline models](#legacy-offline-models)
 - [Fit-window and cadence guidance](#fit-window-and-cadence-guidance)
 - [Autotune guidance](#autotune-guidance)
 
@@ -113,35 +113,29 @@ For stable MAD, Z-score, and online-quantile distributions, use `history_strengt
 This can reduce fit-time data, CPU, and RAM, but it does not replace coverage of every required
 seasonal phase and should not anchor a genuinely changing regime.
 
-## Offline and specialized alternatives
+## Legacy offline models
+
+Do not include offline models in the ordinary candidate set for new configurations or use one as
+a fallback when the profile is uncertain. Prefer the corresponding online model. Mention an
+offline model only when auditing an existing legacy configuration, when the user explicitly asks
+for it, or when a controlled comparison has already shown a material requirement the online model
+does not meet.
 
 ### `prophet`
 
-Deprioritize Prophet: vmanomaly cannot currently pass external regressors through its API, while
-Temporal Envelope covers the supported online trend/calendar/holiday use cases. Keep Prophet only
-for legacy or comparative configurations that demonstrably perform better. For `step < 1h`, use
-frozen compression such as:
-
-```yaml
-compression:
-  window: 1h
-  agg_method: mean
-  adjust_boundaries: true
-```
-
-Preserve the final inference step. Use a smaller compression window only when sub-hour patterns
-matter.
+Temporal Envelope covers the preferred online trend, calendar, holiday, shift, and forecast
+workflow. Keep Prophet only for an existing legacy configuration or when the user explicitly
+requests it and validation establishes a material benefit.
 
 ### `holtwinters`
 
-Deprioritize Holt-Winters in new configurations. Prefer an online model unless comparative
-validation establishes a clear benefit.
+Keep Holt-Winters only for an existing legacy configuration or an explicit, validated requirement.
 
 ### Isolation Forest
 
-Deprioritize Isolation Forest in new configurations. It does not extrapolate a temporal forecast
-and must be periodically refitted; retain it only when feature-space anomaly validation clearly
-outperforms the corresponding online model.
+Isolation Forest requires periodic refitting and does not extrapolate a temporal forecast. Keep it
+only for an existing legacy configuration or an explicit, validated feature-space requirement;
+use Temporal Envelope Multivariate for the normal cross-channel recommendation path.
 
 ## Fit-window and cadence guidance
 

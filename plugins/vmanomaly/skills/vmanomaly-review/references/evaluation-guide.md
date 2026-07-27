@@ -70,9 +70,11 @@ be stated. Completely empty fit history requires causal cold-start and delays tr
 | simple stable/light-tailed data | `zscore_online` |
 | trend, several calendar profiles, holidays, or persistent shifts | `temporal_envelope` |
 | normality is a changing relationship between aligned channels | `temporal_envelope_multivariate` |
-| custom regressors or Prophet decomposition required | `prophet` |
-| generic feature-space outlier across aligned series | `isolation_forest_multivariate` |
-| generic feature-space outlier within one series | `isolation_forest_univariate` |
+
+When the profile is not demonstrably simple and stationary, start the comparison with Temporal
+Envelope rather than treating an offline model as the fallback. Offline models are not first
+candidates for new configurations. Review them only as legacy or explicitly requested choices,
+and compare them with the corresponding online model.
 
 Temporal Envelope profile names are shape hypotheses, not knobs to enable indiscriminately:
 
