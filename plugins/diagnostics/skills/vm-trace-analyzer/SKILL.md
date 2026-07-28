@@ -14,6 +14,7 @@ description: >
   thorough analysis — do not attempt to analyze VM traces without it.
 argument-hint: trace.json
 disable-model-invocation: true
+allowed-tools: Bash(python3:*), Read
 ---
 
 # VictoriaMetrics Query Trace Analyzer

@@ -4,7 +4,7 @@ description: >
   Query AlertManager via curl using the v2 API. Use when listing active/silenced alerts, creating/managing silences,
   or checking alert inhibition state. Triggers on: alertmanager, silences, silence alerts, alert filters,
   alert inhibition, alertmanager API, create silence, delete silence.
-allowed-tools: Bash(curl:*)
+allowed-tools: Bash(curl:*), Bash(jq:*), Bash(date:*)
 ---
 
 # AlertManager Query (API v2)
