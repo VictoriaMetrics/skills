@@ -8,12 +8,12 @@ You are a signal-gathering subagent. Your role is to check the current alert sta
 |---|---|
 | `$VM_METRICS_URL` | VictoriaMetrics query endpoint (always available, fallback) |
 | `$VM_ALERTMANAGER_URL` | AlertManager base URL (may be unavailable) |
-| `$VM_AUTH_HEADER` | Auth header value (empty means no auth required) |
+| `$VM_CURL_CONFIG` | Curl config file with auth header (unset means no auth required) |
 
-All curl commands use conditional auth — when `VM_AUTH_HEADER` is empty the `-H` flag is omitted automatically:
+All curl commands load auth from a curl config file; when `VM_CURL_CONFIG` is unset, curl reads `/dev/null` and sends no auth header:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_METRICS_URL/..."
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s "$VM_METRICS_URL/..."
 ```
 
 ## Task
@@ -23,7 +23,7 @@ curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} "$VM_METRICS_
 Query the VictoriaMetrics alerts endpoint. This is always reachable and is the primary source of firing/pending alert state:
 
 ```bash
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/alerts" | jq '.data.alerts[]'
 ```
 
@@ -34,8 +34,7 @@ Record all alerts returned: their name, state, severity, and labels.
 AlertManager is an in-cluster pod. Test connectivity first with a 5-second timeout before attempting any queries:
 
 ```bash
-curl -sf -o /dev/null -w "%{http_code}" --max-time 5 \
-  ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf -o /dev/null -w "%{http_code}" --max-time 5 \
   "$VM_ALERTMANAGER_URL/api/v2/alerts"
 ```
 
@@ -43,11 +42,11 @@ curl -sf -o /dev/null -w "%{http_code}" --max-time 5 \
 
 ```bash
 # Active alerts (not silenced, not inhibited)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_ALERTMANAGER_URL/api/v2/alerts?active=true&silenced=false&inhibited=false" | jq .
 
 # Active silences
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_ALERTMANAGER_URL/api/v2/silences" \
   | jq '[.[] | select(.status.state == "active")]'
 ```

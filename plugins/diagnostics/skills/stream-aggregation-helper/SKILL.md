@@ -36,9 +36,9 @@ mode) but is much more accurate when it can query the user's VictoriaMetrics dir
 # $VM_METRICS_URL - base URL (optional)
 #   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
 #   single:  export VM_METRICS_URL="http://localhost:8428"
-# $VM_AUTH_HEADER - full HTTP header line (empty if no auth)
-#   Prod:  export VM_AUTH_HEADER="Authorization: Bearer <token>"
-#   Local: export VM_AUTH_HEADER=""
+# $VM_CURL_CONFIG - curl config file with auth header (unset if no auth)
+#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   Local:  leave unset (defaults to /dev/null - no auth)
 ```
 
 ---
@@ -97,12 +97,12 @@ What metric/set is the problem? How many series, driven by which labels?
 
 ```bash
 # Top series by metric name (find the offenders)
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/status/tsdb?topN=20" | \
   jq '.data | {totalSeries, seriesCountByMetricName, seriesCountByLabelName}'
 
 # For each suspect metric, see unique values per label
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/status/tsdb?topN=20&match[]=METRIC_NAME" | \
   jq '.data.labelValueCountByLabelName'
 ```
@@ -116,12 +116,12 @@ labels you forgot to enumerate. The measured count is authoritative:
 ```bash
 # Post-aggregation series count, using the labels you plan to KEEP.
 # Replace <metric> and <kept_labels>. For counters use rate(...[5m]); for gauges use last_over_time.
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   --data-urlencode 'query=count(sum(rate(<metric>[5m])) by (<kept_labels>))' \
   "$VM_METRICS_URL/api/v1/query" | jq '.data.result'
 
 # Equivalent form using the labels you plan to DROP:
-curl -s ${VM_AUTH_HEADER:+-H} ${VM_AUTH_HEADER:+"$VM_AUTH_HEADER"} \
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   --data-urlencode 'query=count(sum(rate(<metric>[5m])) without (<dropped_labels>))' \
   "$VM_METRICS_URL/api/v1/query" | jq '.data.result'
 ```
