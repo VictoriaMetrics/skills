@@ -123,14 +123,18 @@ never carry stale parameters across classes.
 
 Default hierarchy:
 
-1. For complex operational profiles with trend, calendar patterns, holidays, persistent shifts,
-   or forecasts, start with `temporal_envelope`.
-2. For simple non-seasonal data, prefer `mad_online`; use `zscore_online` when the distribution is
-   stable/light-tailed and standard-deviation magnitude is meaningful.
+1. Start with `temporal_envelope` for any non-trivial temporal profile: trend, calendar patterns,
+   holidays, persistent shifts, forecasts, or uncertainty about whether a simple stationary
+   baseline is sufficient.
+2. Use `mad_online` or `zscore_online` only when profiling confirms simple, non-seasonal,
+   relatively stable data. Prefer MAD for skewed, heavy-tailed, or outlier-contaminated data; use
+   Z-score only when the distribution is stable/light-tailed and standard-deviation magnitude is
+   meaningful.
 3. For aligned channels where their relationship is the anomaly, start with
    `temporal_envelope_multivariate`.
-4. Deprioritize offline models; retain them only for legacy use or when comparative validation
-   establishes a clear benefit.
+4. Do not introduce an offline model in the normal recommendation flow. Discuss one only when
+   reviewing a legacy configuration, when the user explicitly requests it, or when a controlled
+   comparison has already established a material benefit that an online model cannot provide.
 
 ### 6. Map domain knowledge to public controls
 

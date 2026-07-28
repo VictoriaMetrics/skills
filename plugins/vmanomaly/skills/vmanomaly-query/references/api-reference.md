@@ -178,9 +178,9 @@ Useful controls:
 - `frozen_params` for fixed domain/model choices such as direction, holidays, or multivariate
   `groupby`
 
-For sub-hour Prophet tuning, freeze compression when appropriate while preserving the final query
-step. For multivariate models, keep group structure fixed rather than treating it as an optimizer
-dimension.
+For multivariate models, keep group structure fixed rather than treating it as an optimizer
+dimension. Treat offline-model tuning as a legacy or explicitly requested workflow, not a default
+candidate path.
 
 Creation returns a task ID immediately. Poll `GET /api/v1/autotune/tasks/{id}` until `done`,
 `error`, or `canceled`.
