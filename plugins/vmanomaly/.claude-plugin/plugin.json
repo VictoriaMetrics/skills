@@ -1,7 +1,7 @@
 {
   "name": "vmanomaly",
   "description": "Configure, operate, and review VictoriaMetrics Anomaly Detection. Profile time series, select and tune models, validate configurations, run bounded detection tasks, and check persisted-state compatibility.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "VictoriaMetrics"
   },

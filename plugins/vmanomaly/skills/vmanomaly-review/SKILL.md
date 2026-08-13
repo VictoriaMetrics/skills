@@ -96,6 +96,12 @@ Also inspect:
 - multivariate `groupby` and channel counts match the intended dependency groups;
 - requested `provide_series` does not create accidental output cardinality;
 - offline models have a suitable refit cadence.
+- for v1.30.2+ deployment YAML, stable `data_range`, `detection_direction`,
+  `min_dev_from_expected`, and `min_rel_dev_from_expected` policies are query-level. Report
+  model-level placement as a deprecated compatible fallback, not a validation failure; explicit
+  query values take precedence.
+- `reader.workers` bounds datasource concurrency, while `settings.n_workers` controls model
+  processes and `settings.native_threads_per_worker` bounds native threads per process.
 
 Changing class requires reconstructing the spec from the new schema, not deleting errors one by
 one until validation passes.

@@ -63,13 +63,17 @@ assignment may require new state.
 | Control | Recommend when | Avoid as a blanket default |
 |---|---|---|
 | `scheduler.scatter_infer_jobs: true` | many queries, short `infer_every`, `n_workers > 1`, synchronized bursts | one or a few cheap queries |
+| `reader.workers: 0` | v1.30.2+ multi-query or disk-streamed reads needing a cgroup-aware automatic bound | v1.30.1 and earlier; a positive cap without measured datasource limits |
 | `settings.n_workers > 1` | independent models/series and available CPU | tightly constrained single-core deployments |
+| `settings.native_threads_per_worker: 0` | v1.30.2+ process workers using BLAS/OpenMP-backed models; automatically divides CPU capacity | replacing `settings.n_workers`; they control different layers |
 | on-disk mode | model/data cardinality causes RAM pressure or state restoration is enabled | latency-sensitive small in-memory workloads, unless needed for restoration |
 | query-range splitting | long fit reads hit memory, timeout, or datasource limits | bounded reads already complete reliably |
 | `reader.series_processing_batch_size` tuning | measured processing memory/throughput bottleneck | changing the default without evidence |
 
 Keep `infer_every` aligned with the required alert reaction time. Scattering smooths work within
-that interval; it does not increase total capacity by itself.
+that interval; it does not increase total capacity by itself. `reader.workers` bounds datasource
+work, `settings.n_workers` controls model processes, and `native_threads_per_worker` bounds native
+threads inside each process.
 
 ## Scale-out and high availability
 

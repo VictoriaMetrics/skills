@@ -187,6 +187,8 @@ curl -q --config "$VM_CURL_CONFIG" -s \
 Treat `done`, `error`, and `canceled` as terminal. On `done`, apply
 `result_data.data.modelConfig` directly, validate it, and test it. Do not replace this concrete
 one-time recommendation with `class: auto`; the deployable auto wrapper has a different lifecycle.
+Business policies in this result remain model-spec fields for task/UI compatibility; move them to
+the attached query only when constructing a v1.30.2+ deployment configuration.
 Use DELETE only when the user asks to cancel:
 
 ```bash
@@ -227,7 +229,10 @@ tasks merely because a task is still running.
 
 Use `/api/vmanomaly/config.yaml` for an example configuration and
 `/api/vmanomaly/example-alert-rule.yaml` for a VMAlert rule. Pass values with `--data-urlencode`.
-Validate the resulting configuration before presenting it as ready to deploy.
+The config endpoint preserves compatibility-oriented model-level business fields. For v1.30.2+
+deployment YAML, move `data_range`, `detection_direction`, `min_dev_from_expected`, and
+`min_rel_dev_from_expected` to `reader.queries.<alias>`, consider `reader.workers: 0` for bounded
+datasource concurrency, and validate the resulting complete configuration before presenting it.
 
 ## Optional companion skills
 

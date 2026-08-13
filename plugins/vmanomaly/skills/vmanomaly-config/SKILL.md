@@ -138,15 +138,17 @@ Default hierarchy:
 
 ### 6. Map domain knowledge to public controls
 
-- Fix `detection_direction` when business intent is known.
-- In deployable YAML, set `reader.queries.<alias>.data_range` (or the reader-level default) for
-  bounded metrics. The service propagates that query domain into model execution.
-- For an ad-hoc detection task, `model_spec.data_range` is accepted and mapped to its temporary
-  reader query; common model schemas expose it for this execution contract.
+- Fix `detection_direction` when business intent is known, and map insignificant absolute/relative
+  deviations to `min_dev_from_expected` and `min_rel_dev_from_expected`.
+- In v1.30.2+ deployable YAML, place `data_range`, `detection_direction`,
+  `min_dev_from_expected`, and `min_rel_dev_from_expected` under
+  `reader.queries.<alias>`. Query values are authoritative across attached models; model-level
+  values remain compatible local fallbacks but are deprecated.
+- For VMUI or an ad-hoc detection task, keep these fields in `model_spec`: the UI suggestion/query
+  contract does not expose per-query business-policy fields. The backend maps `data_range` to the
+  temporary query and resolves the other fields as model-local compatibility values.
 - Set model-level `clip_predictions` only when forecast and interval outputs should be clipped to
   that domain.
-- Map insignificant absolute/relative deviations to `min_dev_from_expected` and
-  `min_rel_dev_from_expected`.
 - Use `min_n_samples_seen` to suppress scores during cold-start; express its duration as samples
   multiplied by query step.
 - For stable MAD, Z-score, or online-quantile data, consider `history_strength > 1` instead of many
@@ -184,7 +186,9 @@ jq -n --arg query "$QUERY" --arg timezone "$TIMEZONE" '{
 
 Poll `GET /api/v1/autotune/tasks/{task_id}` sequentially. On success, use the concrete
 `result_data.data.modelConfig`, validate it, and test it. Do not substitute `class: auto`; that
-wrapper retunes during each fit and is a separate, explicitly chosen lifecycle.
+wrapper retunes during each fit and is a separate, explicitly chosen lifecycle. Autotune still
+returns a model spec: keep frozen business fields there for VMUI/ad-hoc testing, but move them to
+the corresponding query when assembling v1.30.2+ deployment YAML.
 
 ### 8. Validate and test
 
@@ -251,7 +255,10 @@ Provide:
   choices from `references/deployment-readiness.md`.
 
 Generated `/api/vmanomaly/config.yaml` and `/api/vmanomaly/example-alert-rule.yaml` output is a
-starting point, not proof of correctness. Validate it before delivery.
+starting point, not proof of correctness. The config endpoint preserves the VMUI/model-spec
+compatibility shape; before presenting v1.30.2+ deployment YAML, move the four stable business
+policies to `reader.queries.<alias>`, add `reader.workers` when appropriate, and validate the final
+configuration.
 
 ## Safety
 
