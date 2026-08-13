@@ -100,7 +100,9 @@ application/yaml`. Runtime deployment or hot reload is a separate user-controlle
 
 `GET /api/vmanomaly/config.yaml` accepts model/query/scheduler parameters and returns YAML.
 `GET /api/vmanomaly/example-alert-rule.yaml` returns a VMAlert rule. Use `--data-urlencode` for
-expressions and durations. Generated output still needs validation and human review.
+expressions and durations. The config endpoint preserves the VMUI/model-spec compatibility shape.
+For v1.30.2+ deployment YAML, canonicalize stable business policies under the generated query and
+validate the complete result; generated output still needs human review.
 
 ## Server context and query proxy
 
@@ -174,7 +176,8 @@ Useful controls:
 - `optimization_params.n_trials`, `timeout`
 - `optimization_params.exact` for causal online-model evaluation
 - `optimization_params.optimize_complexity` for fitted-state tie-breaking
-- `optimized_business_params` only for business fields the user authorizes tuning
+- `optimized_business_params` only for legacy model-spec workflows where the user explicitly
+  authorizes business-policy tuning; prefer fixed query policies for v1.30.2+ deployments
 - `frozen_params` for fixed domain/model choices such as direction, holidays, or multivariate
   `groupby`
 
@@ -192,6 +195,10 @@ On `done`, use:
 - `result_data.data.profile`
 - `result_data.data.optimization`
 - `result_data.stats`
+
+The result remains a model configuration for validation and ad-hoc/UI tasks. When producing a
+v1.30.2+ deployment, transfer stable `data_range`, `detection_direction`,
+`min_dev_from_expected`, and `min_rel_dev_from_expected` values to each attached query.
 
 This workflow returns a concrete one-time recommendation. It is different from deploying
 `class: auto`, which retunes during the model fitting lifecycle.
