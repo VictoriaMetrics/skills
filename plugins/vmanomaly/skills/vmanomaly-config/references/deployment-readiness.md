@@ -69,6 +69,8 @@ assignment may require new state.
 | on-disk mode | model/data cardinality causes RAM pressure or state restoration is enabled | latency-sensitive small in-memory workloads, unless needed for restoration |
 | query-range splitting | long fit reads hit memory, timeout, or datasource limits | bounded reads already complete reliably |
 | `reader.series_processing_batch_size` tuning | measured processing memory/throughput bottleneck | changing the default without evidence |
+| `writer.batch_max_series` / `writer.batch_max_bytes` | high-cardinality outputs or measured remote-write request limits | reducing batches without throughput, memory, or receiver evidence |
+| `writer.metric_prefix_cache_max_entries` | prefixing many dynamic metric names needs a bounded cache | changing the default without measured cache pressure |
 
 Keep `infer_every` aligned with the required alert reaction time. Scattering smooths work within
 that interval; it does not increase total capacity by itself. `reader.workers` bounds datasource
@@ -81,6 +83,12 @@ Introduce sharding only after one instance is resource-bound or when isolation i
 required. Add replication only for an explicit availability objective. Replicated writers require
 VictoriaMetrics-side deduplication to avoid duplicate output samples. Hot reload can redistribute
 sub-configurations between shards, reducing state-restoration reuse.
+
+Round-robin remains the ordinary sharding strategy. Use rendezvous sharding only when stable
+assignment during configuration changes materially improves state reuse; set
+`VMANOMALY_SHARDING_STRATEGY=RENDEZVOUS` on every shard and remember that changing the shard count
+can still move assignments. In Operator deployments, pass this setting through `extraEnvs` rather
+than treating it as a writer option.
 
 ## Production handoff
 

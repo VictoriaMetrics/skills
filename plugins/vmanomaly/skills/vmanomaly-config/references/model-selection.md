@@ -89,7 +89,9 @@ channel retains its own trend/calendar profile, while dependencies contribute to
 - `groupby` creates a separate multivariate model per label combination and must be frozen/domain-
   selected rather than optimized;
 - `recommended_max_channels=100` is advisory; `max_channels=1000` is a hard safety limit;
-- explicitly requesting channel-level `y`/forecasts/bounds increases output cardinality.
+- explicitly requesting channel-level `y`/forecasts/bounds increases output cardinality;
+- per-channel diagnostics do not change the many-to-one model topology: topology describes the
+  joint scoring/routing contract, not the number of auxiliary output series.
 
 ## Simple online models
 

@@ -34,6 +34,11 @@ Do not present levels 2–3 as labeled ground truth.
   CPU limits.
 - Recommend sharding/replication only for measured capacity or availability requirements, and
   require output deduplication with replicated writers.
+- For high-cardinality outputs, verify writer series/byte batch bounds and metric-prefix cache
+  limits against measured receiver and memory constraints.
+- Prefer the default round-robin sharding unless stable assignment has a concrete state-reuse
+  benefit; if using rendezvous, require the same strategy on every shard and document reassignment
+  risk when the shard count changes.
 
 ### Scheduler timing
 
@@ -60,7 +65,8 @@ be stated. Completely empty fit history requires causal cold-start and delays tr
 - Every model parameter exists in its exact class schema. Validate reader, scheduler, writer, and
   other top-level fields and cross-references with full-configuration validation.
 - Multivariate groups contain aligned, semantically related channels.
-- The writer can safely absorb requested output cardinality.
+- The writer can safely absorb requested output cardinality. Per-channel forecasts or bounds from
+  a joint-score model increase writer cardinality without changing its many-to-one topology.
 
 ## Model-data fit
 
