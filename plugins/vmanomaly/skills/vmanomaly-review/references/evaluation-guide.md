@@ -26,27 +26,19 @@ Do not present levels 2–3 as labeled ground truth.
 ### Deployment readiness
 
 - Online periodic models should restore compatible state from durable on-disk storage.
-- High-churn inputs should use a retention TTL longer than legitimate series absence, with a check
-  interval shorter than both TTL and the smallest `fit_every`.
-- Hot reload should be content-polled, preceded by full-config validation, and covered by reload
-  success metrics.
-- Scatter inference only for many queries and measured synchronized load; match workers to actual
-  CPU limits.
-- Recommend sharding/replication only for measured capacity or availability requirements, and
-  require output deduplication with replicated writers.
-- For high-cardinality outputs, verify writer series/byte batch bounds and metric-prefix cache
-  limits against measured receiver and memory constraints.
-- Prefer the default round-robin sharding unless stable assignment has a concrete state-reuse
-  benefit; if using rendezvous, require the same strategy on every shard and document reassignment
-  risk when the shard count changes.
+- High-churn inputs should use a retention TTL longer than legitimate series absence, with a check interval shorter than both TTL and the smallest `fit_every`.
+- Hot reload should be content-polled, preceded by full-config validation, and covered by reload success metrics.
+- Scatter inference only for many queries and measured synchronized load; match workers to actual CPU limits.
+- Recommend sharding/replication only for measured capacity or availability requirements, and require output deduplication with replicated writers.
+- For high-cardinality outputs, verify writer series/byte batch bounds and metric-prefix cache limits against measured receiver and memory constraints.
+- Prefer the default round-robin sharding unless stable assignment has a concrete state-reuse benefit; if using rendezvous, require the same strategy on every shard and document reassignment risk when the shard count changes.
 
 ### Scheduler timing
 
 - `infer_every` bounds how long a new point may wait for the next scheduled inference.
 - `fit_window` must contain enough cycles for configured seasonality.
 - `fit_every` controls refitting, not the online update cadence.
-- A long `fit_every` is valid for an exploratory exact online task that should preserve one state;
-  it is not a universal production recommendation.
+- A long `fit_every` is valid for an exploratory exact online task that should preserve one state; it is not a universal production recommendation.
 
 Starting history guidance:
 
@@ -56,17 +48,14 @@ Starting history guidance:
 | weekly/DOW | `2w` | `30d` |
 | month-of-year | `24mo` when feasible | `24mo+` |
 
-Partial fit history can initialize online models, but warmup and weaker seasonal estimates should
-be stated. Completely empty fit history requires causal cold-start and delays trusted scores.
+Partial fit history can initialize online models, but warmup and weaker seasonal estimates should be stated. Completely empty fit history requires causal cold-start and delays trusted scores.
 
 ### Cross references
 
 - Every model query and scheduler alias resolves.
-- Every model parameter exists in its exact class schema. Validate reader, scheduler, writer, and
-  other top-level fields and cross-references with full-configuration validation.
+- Every model parameter exists in its exact class schema. Validate reader, scheduler, writer, and other top-level fields and cross-references with full-configuration validation.
 - Multivariate groups contain aligned, semantically related channels.
-- The writer can safely absorb requested output cardinality. Per-channel forecasts or bounds from
-  a joint-score model increase writer cardinality without changing its many-to-one topology.
+- The writer can safely absorb requested output cardinality. Per-channel forecasts or bounds from a joint-score model increase writer cardinality without changing its many-to-one topology.
 
 ## Model-data fit
 
@@ -77,10 +66,7 @@ be stated. Completely empty fit history requires causal cold-start and delays tr
 | trend, several calendar profiles, holidays, or persistent shifts | `temporal_envelope` |
 | normality is a changing relationship between aligned channels | `temporal_envelope_multivariate` |
 
-When the profile is not demonstrably simple and stationary, start the comparison with Temporal
-Envelope rather than treating an offline model as the fallback. Offline models are not first
-candidates for new configurations. Review them only as legacy or explicitly requested choices,
-and compare them with the corresponding online model.
+When the profile is not demonstrably simple and stationary, start the comparison with Temporal Envelope rather than treating an offline model as the fallback. Offline models are not first candidates for new configurations. Review them only as legacy or explicitly requested choices, and compare them with the corresponding online model.
 
 Temporal Envelope profile names are shape hypotheses, not knobs to enable indiscriminately:
 
@@ -113,13 +99,11 @@ Report metrics appropriate to the event:
 - time to stable and settled-regime false-positive rate for adaptation;
 - forecast/boundary error only for models that produce those outputs.
 
-Evaluate online models causally. Batch inference can leak future observations into validation and
-select parameters that underperform in production exact inference.
+Evaluate online models causally. Batch inference can leak future observations into validation and select parameters that underperform in production exact inference.
 
 ### Comparison discipline
 
-Keep query, step, timezone, fit/inference windows, direction, business thresholds, and labels fixed.
-Change one coherent configuration at a time. Record task/model specifications with results.
+Keep query, step, timezone, fit/inference windows, direction, business thresholds, and labels fixed. Change one coherent configuration at a time. Record task/model specifications with results.
 
 ## Common failure patterns
 

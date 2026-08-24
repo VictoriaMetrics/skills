@@ -1,23 +1,15 @@
 ---
 name: vmanomaly-config
 description: >
-  Design, tune, validate, and test VictoriaMetrics vmanomaly configurations for known metrics
-  or LogsQL queries. Use when choosing static alerting versus ML, selecting a vmanomaly model,
-  configuring Temporal Envelope, building deployment YAML, tuning anomaly sensitivity, or
-  creating VMAlert rules. Trigger on anomaly configuration, model selection, shared autotune,
-  seasonal anomaly detection, forecasting, or "how should I monitor this metric?" Do not use
-  for open-ended discovery across unknown signals.
+  Design, tune, validate, and test VictoriaMetrics vmanomaly configurations for known metrics or LogsQL queries. Use when choosing static alerting versus ML, selecting a vmanomaly model, configuring Temporal Envelope, building deployment YAML, tuning anomaly sensitivity, or creating VMAlert rules. Trigger on anomaly configuration, model selection, shared autotune, seasonal anomaly detection, forecasting, or "how should I monitor this metric?" Do not use for open-ended discovery across unknown signals.
 allowed-tools: Bash(curl:*), Bash(jq:*), Read
 ---
 
 # vmanomaly configuration builder
 
-Turn a known monitoring intent into a validated vmanomaly v1.30+ configuration. ML must earn its
-operational cost: first decide whether a static rule expresses the failure condition more clearly.
+Turn a known monitoring intent into a validated vmanomaly v1.30+ configuration. ML must earn its operational cost: first decide whether a static rule expresses the failure condition more clearly.
 
-Read `references/model-selection.md` before selecting a model or its parameters.
-When producing a continuously running deployment, also read
-`references/deployment-readiness.md` and apply only the controls whose conditions match.
+Read `references/model-selection.md` before selecting a model or its parameters. When producing a continuously running deployment, also read `references/deployment-readiness.md` and apply only the controls whose conditions match.
 
 ## Environment
 
@@ -28,8 +20,7 @@ export VM_ANOMALY_URL="https://vmanomaly.example.com"
 export VM_CURL_CONFIG="${VM_CURL_CONFIG:-/dev/null}"
 ```
 
-Include any configured path prefix in `VM_ANOMALY_URL`. Never print or create the credential file.
-Ask for the URL when it is unavailable.
+Include any configured path prefix in `VM_ANOMALY_URL`. Never print or create the credential file. Ask for the URL when it is unavailable.
 
 ## Workflow
 
@@ -45,12 +36,9 @@ Collect or infer:
 - known physical bounds and insignificant absolute/relative deviations;
 - sensitivity preference and acceptable upper detection rate.
 
-If the model-query field is empty but the user already supplied a query, use it for profiling and
-recommend placing it in the UI query input. If no query exists, ask for one. Do not invent a
-production query from a metric description.
+If the model-query field is empty but the user already supplied a query, use it for profiling and recommend placing it in the UI query input. If no query exists, ask for one. Do not invent a production query from a metric description.
 
-When installed, `victoriametrics-query` or `victorialogs-query` may help discover names, labels,
-and valid expressions. Their absence must not block this skill.
+When installed, `victoriametrics-query` or `victorialogs-query` may help discover names, labels, and valid expressions. Their absence must not block this skill.
 
 ### 2. Triage static alerting versus ML
 
@@ -63,9 +51,7 @@ Prefer a static VMAlert rule when a clear bad value exists:
 | binary/up-down state | direct threshold, `absent()`, or `changes()` |
 | expiry or hard safety limit | direct threshold |
 
-Use vmanomaly when normal varies by time, instance, workload, or a drifting baseline; when daily,
-weekly, monthly, or holiday structure matters; or when a cross-series relationship is the signal.
-Present this decision before spending an autotune budget.
+Use vmanomaly when normal varies by time, instance, workload, or a drifting baseline; when daily, weekly, monthly, or holiday structure matters; or when a cross-series relationship is the signal. Present this decision before spending an autotune budget.
 
 ### 3. Run the runtime preflight
 
@@ -104,9 +90,7 @@ curl -q --config "$VM_CURL_CONFIG" -sG \
   "$VM_ANOMALY_URL/api/v1/timeseries/characteristics" | jq .
 ```
 
-Use measured trend, daily/weekly/monthly profiles, shape, eligibility, and coverage rather than
-guessing from the metric name. A limited result is a sample. If a limited read returns a split-
-chunk 422, shorten the interval or use a coarser step.
+Use measured trend, daily/weekly/monthly profiles, shape, eligibility, and coverage rather than guessing from the metric name. A limited result is a sample. If a limited read returns a split-chunk 422, shorten the interval or use a coarser step.
 
 ### 5. Discover and select a supported model
 
@@ -118,44 +102,24 @@ curl -q --config "$VM_CURL_CONFIG" -sG \
   "$VM_ANOMALY_URL/api/v1/model/schema" | jq .
 ```
 
-Use the live alias list and schema as authoritative. Rebuild the model spec when changing class;
-never carry stale parameters across classes.
+Use the live alias list and schema as authoritative. Rebuild the model spec when changing class; never carry stale parameters across classes.
 
 Default hierarchy:
 
-1. Start with `temporal_envelope` for any non-trivial temporal profile: trend, calendar patterns,
-   holidays, persistent shifts, forecasts, or uncertainty about whether a simple stationary
-   baseline is sufficient.
-2. Use `mad_online` or `zscore_online` only when profiling confirms simple, non-seasonal,
-   relatively stable data. Prefer MAD for skewed, heavy-tailed, or outlier-contaminated data; use
-   Z-score only when the distribution is stable/light-tailed and standard-deviation magnitude is
-   meaningful.
-3. For aligned channels where their relationship is the anomaly, start with
-   `temporal_envelope_multivariate`.
-4. Do not introduce an offline model in the normal recommendation flow. Discuss one only when
-   reviewing a legacy configuration, when the user explicitly requests it, or when a controlled
-   comparison has already established a material benefit that an online model cannot provide.
+1. Start with `temporal_envelope` for any non-trivial temporal profile: trend, calendar patterns, holidays, persistent shifts, forecasts, or uncertainty about whether a simple stationary baseline is sufficient.
+2. Use `mad_online` or `zscore_online` only when profiling confirms simple, non-seasonal, relatively stable data. Prefer MAD for skewed, heavy-tailed, or outlier-contaminated data; use Z-score only when the distribution is stable/light-tailed and standard-deviation magnitude is meaningful.
+3. For aligned channels where their relationship is the anomaly, start with `temporal_envelope_multivariate`.
+4. Do not introduce an offline model in the normal recommendation flow. Discuss one only when reviewing a legacy configuration, when the user explicitly requests it, or when a controlled comparison has already established a material benefit that an online model cannot provide.
 
 ### 6. Map domain knowledge to public controls
 
-- Fix `detection_direction` when business intent is known, and map insignificant absolute/relative
-  deviations to `min_dev_from_expected` and `min_rel_dev_from_expected`.
-- In v1.30.2+ deployable YAML, place `data_range`, `detection_direction`,
-  `min_dev_from_expected`, and `min_rel_dev_from_expected` under
-  `reader.queries.<alias>`. Query values are authoritative across attached models; model-level
-  values remain compatible local fallbacks but are deprecated.
-- For VMUI or an ad-hoc detection task, keep these fields in `model_spec`: the UI suggestion/query
-  contract does not expose per-query business-policy fields. The backend maps `data_range` to the
-  temporary query and resolves the other fields as model-local compatibility values.
-- Set model-level `clip_predictions` only when forecast and interval outputs should be clipped to
-  that domain.
-- Use `min_n_samples_seen` to suppress scores during cold-start; express its duration as samples
-  multiplied by query step.
-- For stable MAD, Z-score, or online-quantile data, consider `history_strength > 1` instead of many
-  extra fit cycles; keep enough history to cover every required seasonal phase.
-- Select only calendar presets supported by the profile. Temporal Envelope profiles are timezone-
-  and DST-aware; set `reader.queries.<alias>.tz` (or the reader-level `tz`) to the same IANA
-  timezone used during profiling.
+- Fix `detection_direction` when business intent is known, and map insignificant absolute/relative deviations to `min_dev_from_expected` and `min_rel_dev_from_expected`.
+- In v1.30.2+ deployable YAML, place `data_range`, `detection_direction`, `min_dev_from_expected`, and `min_rel_dev_from_expected` under `reader.queries.<alias>`. Query values are authoritative across attached models; model-level values remain compatible local fallbacks but are deprecated.
+- For VMUI or an ad-hoc detection task, keep these fields in `model_spec`: the UI suggestion/query contract does not expose per-query business-policy fields. The backend maps `data_range` to the temporary query and resolves the other fields as model-local compatibility values.
+- Set model-level `clip_predictions` only when forecast and interval outputs should be clipped to that domain.
+- Use `min_n_samples_seen` to suppress scores during cold-start; express its duration as samples multiplied by query step.
+- For stable MAD, Z-score, or online-quantile data, consider `history_strength > 1` instead of many extra fit cycles; keep enough history to cover every required seasonal phase.
+- Select only calendar presets supported by the profile. Temporal Envelope profiles are timezone- and DST-aware; set `reader.queries.<alias>.tz` (or the reader-level `tz`) to the same IANA timezone used during profiling.
 - Keep `forecast_at` empty unless the user needs future-state forecasting or capacity planning.
 - Keep multivariate `groupby`, holidays, and other domain structure fixed during autotune.
 
@@ -163,8 +127,7 @@ Default hierarchy:
 
 For a direct configuration, begin with schema defaults and change only justified controls.
 
-For shared autotune, first select the model class. State the trial/time budget, then create one
-bounded task. Use causal exact validation for online models:
+For shared autotune, first select the model class. State the trial/time budget, then create one bounded task. Use causal exact validation for online models:
 
 ```bash
 jq -n --arg query "$QUERY" --arg timezone "$TIMEZONE" '{
@@ -184,11 +147,7 @@ jq -n --arg query "$QUERY" --arg timezone "$TIMEZONE" '{
   "$VM_ANOMALY_URL/api/v1/autotune/tasks" | jq .
 ```
 
-Poll `GET /api/v1/autotune/tasks/{task_id}` sequentially. On success, use the concrete
-`result_data.data.modelConfig`, validate it, and test it. Do not substitute `class: auto`; that
-wrapper retunes during each fit and is a separate, explicitly chosen lifecycle. Autotune still
-returns a model spec: keep frozen business fields there for VMUI/ad-hoc testing, but move them to
-the corresponding query when assembling v1.30.2+ deployment YAML.
+Poll `GET /api/v1/autotune/tasks/{task_id}` sequentially. On success, use the concrete `result_data.data.modelConfig`, validate it, and test it. Do not substitute `class: auto`; that wrapper retunes during each fit and is a separate, explicitly chosen lifecycle. Autotune still returns a model spec: keep frozen business fields there for VMUI/ad-hoc testing, but move them to the corresponding query when assembling v1.30.2+ deployment YAML.
 
 ### 8. Validate and test
 
@@ -231,14 +190,9 @@ curl -q --config "$VM_CURL_CONFIG" -s \
   "$VM_ANOMALY_URL/api/v1/anomaly_detection/tasks/<task_id>" | jq .
 ```
 
-Poll the returned task ID sequentially until `done`, `error`, or `canceled`. For online models use
-`exact:true` and default to an effectively disabled refit cadence such as `fit_every: 1000w`, so
-the initial fit evolves causally during inference. Configure periodic refits only when explicitly
-needed.
+Poll the returned task ID sequentially until `done`, `error`, or `canceled`. For online models use `exact:true` and default to an effectively disabled refit cadence such as `fit_every: 1000w`, so the initial fit evolves causally during inference. Configure periodic refits only when explicitly needed.
 
-Evaluate detections visually and against known events. Without ground-truth labels, call the
-observed fraction a **detection rate**, not a false-positive rate. Ask the user which detections
-were useful before tightening the model.
+Evaluate detections visually and against known events. Without ground-truth labels, call the observed fraction a **detection rate**, not a false-positive rate. Ask the user which detections were useful before tightening the model.
 
 ### 9. Deliver deployable artifacts
 
@@ -249,16 +203,10 @@ Provide:
 - rationale tied to profile evidence and business intent;
 - query step, fit window/cadence, warmup, expected reaction time, and resource caveats;
 - validation/test results and assumptions requiring production verification.
-- self-monitoring integration, with the official dashboard and alert rules recommended for
-  production rather than relying on point-in-time health checks.
-- justified state restoration, retention, hot-reload, persistence, and workload-distribution
-  choices from `references/deployment-readiness.md`.
+- self-monitoring integration, with the official dashboard and alert rules recommended for production rather than relying on point-in-time health checks.
+- justified state restoration, retention, hot-reload, persistence, and workload-distribution choices from `references/deployment-readiness.md`.
 
-Generated `/api/vmanomaly/config.yaml` and `/api/vmanomaly/example-alert-rule.yaml` output is a
-starting point, not proof of correctness. The config endpoint preserves the VMUI/model-spec
-compatibility shape; before presenting v1.30.2+ deployment YAML, move the four stable business
-policies to `reader.queries.<alias>`, add `reader.workers` when appropriate, and validate the final
-configuration.
+Generated `/api/vmanomaly/config.yaml` and `/api/vmanomaly/example-alert-rule.yaml` output is a starting point, not proof of correctness. The config endpoint preserves the VMUI/model-spec compatibility shape; before presenting v1.30.2+ deployment YAML, move the four stable business policies to `reader.queries.<alias>`, add `reader.workers` when appropriate, and validate the final configuration.
 
 ## Safety
 
