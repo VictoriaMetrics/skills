@@ -1,7 +1,6 @@
 # vmanomaly v1.30 API reference
 
-This reference covers the stable workflows used by the vmanomaly skills. The running OpenAPI
-document and model schemas remain authoritative.
+This reference covers the stable workflows used by the vmanomaly skills. The running OpenAPI document and model schemas remain authoritative.
 
 ## Contents
 
@@ -40,24 +39,19 @@ Base URL: `$VM_ANOMALY_URL`. Include `path_prefix` in this value when configured
 | `/api/vmanomaly/config.yaml` | GET | Generate example configuration |
 | `/api/vmanomaly/example-alert-rule.yaml` | GET | Generate VMAlert rule |
 
-Use JSON request bodies unless an endpoint explicitly accepts YAML or query parameters.
-Times may be Unix seconds; durations use strings such as `5m`, `2w`, or `30d`.
+Use JSON request bodies unless an endpoint explicitly accepts YAML or query parameters. Times may be Unix seconds; durations use strings such as `5m`, `2w`, or `30d`.
 
-`/health` is a point check. Production health should use the documented `/metrics` series together
-with the official vmanomaly self-monitoring dashboard and alert rules, including scheduler-level
-`vmanomaly_scheduler_alive` and `vmanomaly_scheduler_restarts_total` signals.
+`/health` is a point check. Production health should use the documented `/metrics` series together with the official vmanomaly self-monitoring dashboard and alert rules, including scheduler-level `vmanomaly_scheduler_alive` and `vmanomaly_scheduler_restarts_total` signals.
 
 ## Runtime and compatibility
 
 ### `GET /api/v1/server/buildinfo`
 
-Returns the vmanomaly and bundled VMUI versions. Use it to establish runtime capabilities before
-assuming a model or endpoint exists.
+Returns the vmanomaly and bundled VMUI versions. Use it to establish runtime capabilities before assuming a model or endpoint exists.
 
 ### `GET /api/v1/compatibility`
 
-Checks persisted configuration/model/reader state against the current runtime. Optional query
-parameter `version_to=X.Y.Z` checks a planned target instead.
+Checks persisted configuration/model/reader state against the current runtime. Optional query parameter `version_to=X.Y.Z` checks a planned target instead.
 
 Important response fields:
 
@@ -69,47 +63,37 @@ Important response fields:
 - `component_assessment.models_to_purge`
 - `component_assessment.should_purge_reader_data`
 
-No state is a successful result, not an error. The endpoint diagnoses required cleanup but does
-not perform it. The provided-config POST variant is not implemented in v1.30.
+No state is a successful result, not an error. The endpoint diagnoses required cleanup but does not perform it. The provided-config POST variant is not implemented in v1.30.
+
+Compatibility covers vmanomaly-managed state, supported readers, and built-in models, not custom model code, dependencies, or state; before upgrading to v1.30.3+, custom many-to-one models relying on `is_multivariate = True` must declare `topology = ModelTopology.MANY_TO_ONE`.
 
 ## Models and configuration
 
 ### `GET /api/v1/models`
 
-Returns aliases supported by this build. Common v1.30 values include `temporal_envelope`,
-`temporal_envelope_multivariate`, `mad_online`, `zscore_online`, `quantile_online`, `prophet`,
-`holtwinters`, and Isolation Forest variants. Never replace the returned list with a hardcoded one.
+Returns aliases supported by this build. Common v1.30 values include `temporal_envelope`, `temporal_envelope_multivariate`, `mad_online`, `zscore_online`, `quantile_online`, `prophet`, `holtwinters`, and Isolation Forest variants. Never replace the returned list with a hardcoded one.
 
 ### `GET /api/v1/model/schema?model_class=<alias>`
 
-Returns parameter types, bounds, defaults, descriptions, and allowed values. Use the schema as an
-allow-list whenever changing model class. Internal attachment/output fields may not appear in the
-UI-oriented schema.
+Returns parameter types, bounds, defaults, descriptions, and allowed values. Use the schema as an allow-list whenever changing model class. Internal attachment/output fields may not appear in the UI-oriented schema.
 
 ### `POST /api/v1/model/validate`
 
-Accepts one JSON model spec containing `class`. A 201 response is successful. A 422 response
-contains validation details; correct the spec rather than silently dropping user requirements.
+Accepts one JSON model spec containing `class`. A 201 response is successful. A 422 response contains validation details; correct the spec rather than silently dropping user requirements.
 
 ### `POST /api/v1/config/validate`
 
-Validates a full configuration without applying it. Send YAML with `Content-Type:
-application/yaml`. Runtime deployment or hot reload is a separate user-controlled action.
+Validates a full configuration without applying it. Send YAML with `Content-Type: application/yaml`. Runtime deployment or hot reload is a separate user-controlled action.
 
 ### Generated artifacts
 
-`GET /api/vmanomaly/config.yaml` accepts model/query/scheduler parameters and returns YAML.
-`GET /api/vmanomaly/example-alert-rule.yaml` returns a VMAlert rule. Use `--data-urlencode` for
-expressions and durations. The config endpoint preserves the VMUI/model-spec compatibility shape.
-For v1.30.2+ deployment YAML, canonicalize stable business policies under the generated query and
-validate the complete result; generated output still needs human review.
+`GET /api/vmanomaly/config.yaml` accepts model/query/scheduler parameters and returns YAML. `GET /api/vmanomaly/example-alert-rule.yaml` returns a VMAlert rule. Use `--data-urlencode` for expressions and durations. The config endpoint preserves the VMUI/model-spec compatibility shape. For v1.30.2+ deployment YAML, canonicalize stable business policies under the generated query and validate the complete result; generated output still needs human review.
 
 ## Server context and query proxy
 
 ### `GET /api/v1/server/queries`
 
-Returns configured query aliases and expressions. Resolve aliases here before asking the user to
-repeat an already configured query.
+Returns configured query aliases and expressions. Resolve aliases here before asking the user to repeat an already configured query.
 
 ### `GET /api/v1/server/datasource`
 
@@ -124,8 +108,7 @@ Proxies PromQL/MetricsQL or LogsQL through the configured reader path. Typical p
 - `datasource_type` (`vm` or `vlogs`)
 - optional `datasource_url`, `tenant_id`, `pass_auth_headers`
 
-Use the product-specific companion query skill for discovery when installed. A successful empty
-result does not prove that no data exists; first verify the query and label names.
+Use the product-specific companion query skill for discovery when installed. A successful empty result does not prove that no data exists; first verify the query and label names.
 
 ## Time-series characteristics
 
@@ -153,9 +136,7 @@ Key response evidence:
 - `seasonalities.recommended` and per-profile summaries
 - `stats.seriesLimitApplied`, `seriesEstimated`, `seriesLimitMode`
 
-Interpret HOD/hour-of-day as a daily local-hour pattern and DOW/day-of-week as a weekly pattern.
-Limited results are directional samples. Limited reads must fit one query chunk; on a split-chunk
-422, shorten the interval or use a coarser step.
+Interpret HOD/hour-of-day as a daily local-hour pattern and DOW/day-of-week as a weekly pattern. Limited results are directional samples. Limited reads must fit one query chunk; on a split-chunk 422, shorten the interval or use a coarser step.
 
 ## Shared autotune
 
@@ -176,17 +157,12 @@ Useful controls:
 - `optimization_params.n_trials`, `timeout`
 - `optimization_params.exact` for causal online-model evaluation
 - `optimization_params.optimize_complexity` for fitted-state tie-breaking
-- `optimized_business_params` only for legacy model-spec workflows where the user explicitly
-  authorizes business-policy tuning; prefer fixed query policies for v1.30.2+ deployments
-- `frozen_params` for fixed domain/model choices such as direction, holidays, or multivariate
-  `groupby`
+- `optimized_business_params` only for legacy model-spec workflows where the user explicitly authorizes business-policy tuning; prefer fixed query policies for v1.30.2+ deployments
+- `frozen_params` for fixed domain/model choices such as direction, holidays, or multivariate `groupby`
 
-For multivariate models, keep group structure fixed rather than treating it as an optimizer
-dimension. Treat offline-model tuning as a legacy or explicitly requested workflow, not a default
-candidate path.
+For multivariate models, keep group structure fixed rather than treating it as an optimizer dimension. Treat offline-model tuning as a legacy or explicitly requested workflow, not a default candidate path.
 
-Creation returns a task ID immediately. Poll `GET /api/v1/autotune/tasks/{id}` until `done`,
-`error`, or `canceled`.
+Creation returns a task ID immediately. Poll `GET /api/v1/autotune/tasks/{id}` until `done`, `error`, or `canceled`.
 
 On `done`, use:
 
@@ -196,12 +172,9 @@ On `done`, use:
 - `result_data.data.optimization`
 - `result_data.stats`
 
-The result remains a model configuration for validation and ad-hoc/UI tasks. When producing a
-v1.30.2+ deployment, transfer stable `data_range`, `detection_direction`,
-`min_dev_from_expected`, and `min_rel_dev_from_expected` values to each attached query.
+The result remains a model configuration for validation and ad-hoc/UI tasks. When producing a v1.30.2+ deployment, transfer stable `data_range`, `detection_direction`, `min_dev_from_expected`, and `min_rel_dev_from_expected` values to each attached query.
 
-This workflow returns a concrete one-time recommendation. It is different from deploying
-`class: auto`, which retunes during the model fitting lifecycle.
+This workflow returns a concrete one-time recommendation. It is different from deploying `class: auto`, which retunes during the model fitting lifecycle.
 
 There is no v1.30 autotune task-list or limits endpoint. Do not invent them.
 
@@ -209,30 +182,25 @@ There is no v1.30 autotune task-list or limits endpoint. Do not invent them.
 
 ### `GET /api/v1/anomaly_detection/limits`
 
-Check available capacity before creating a task. A 429 from task creation means capacity is
-exhausted; wait or ask before canceling other work.
+Check available capacity before creating a task. A 429 from task creation means capacity is exhausted; wait or ask before canceling other work.
 
 ### `POST /api/v1/anomaly_detection/tasks`
 
 Important fields:
 
-- `query`, `step`, `datasource_url` when not resolved from server context
+- `query`, `step`, and required `datasource_url`; reuse the configured datasource URL when appropriate
 - `fit_window`, `fit_every`
 - `start_infer_s`, `end_infer_s`
 - validated `model_spec`
 - `exact` and `infer_every` where applicable
 
-For UI/API exploration with an online model, a very large `fit_every` can intentionally preserve
-one causal state through the displayed interval. Production periodic cadence is a separate choice.
+For UI/API exploration with an online model, a very large `fit_every` can intentionally preserve one causal state through the displayed interval. Production periodic cadence is a separate choice.
 
-Task results can contain `y`, `yhat`, bounds, and anomaly score depending on model output. The API
-may constrain output fields for response size; do not copy that response-oriented `provide_series`
-setting into production without an explicit reason.
+Task results can contain `y`, `yhat`, bounds, and anomaly score depending on model output. The API may constrain output fields for response size; do not copy that response-oriented `provide_series` setting into production without an explicit reason.
 
 ### Polling and cancellation
 
-Poll one task every few seconds. Treat `done`, `error`, and `canceled` as terminal. Use DELETE for
-cooperative cancellation only when requested. Never create duplicate tasks to simulate polling.
+Poll one task every few seconds. Treat `done`, `error`, and `canceled` as terminal. Use DELETE for cooperative cancellation only when requested. Never create duplicate tasks to simulate polling.
 
 ## Errors and safe retries
 
@@ -244,5 +212,4 @@ cooperative cancellation only when requested. Never create duplicate tasks to si
 | 429 | task capacity reached | Wait, reduce concurrency, or ask before cancellation |
 | 500 | server/runtime failure | Preserve error details and inspect logs/metrics |
 
-Retry only transient connection/server failures, with a bounded count. Validation failures are not
-transient. Keep tool calls sequential when later calls depend on IDs or results from earlier ones.
+Retry only transient connection/server failures, with a bounded count. Validation failures are not transient. Keep tool calls sequential when later calls depend on IDs or results from earlier ones.
