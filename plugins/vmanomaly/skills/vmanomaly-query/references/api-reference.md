@@ -65,6 +65,8 @@ Important response fields:
 
 No state is a successful result, not an error. The endpoint diagnoses required cleanup but does not perform it. The provided-config POST variant is not implemented in v1.30.
 
+Compatibility covers vmanomaly-managed state, supported readers, and built-in models, not custom model code, dependencies, or state; before upgrading to v1.30.3+, custom many-to-one models relying on `is_multivariate = True` must declare `topology = ModelTopology.MANY_TO_ONE`.
+
 ## Models and configuration
 
 ### `GET /api/v1/models`
@@ -186,7 +188,7 @@ Check available capacity before creating a task. A 429 from task creation means 
 
 Important fields:
 
-- `query`, `step`, `datasource_url` when not resolved from server context
+- `query`, `step`, and required `datasource_url`; reuse the configured datasource URL when appropriate
 - `fit_window`, `fit_every`
 - `start_infer_s`, `end_infer_s`
 - validated `model_spec`

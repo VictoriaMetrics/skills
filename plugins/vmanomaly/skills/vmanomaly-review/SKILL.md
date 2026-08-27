@@ -47,7 +47,7 @@ curl -q --config "$VM_CURL_CONFIG" -s \
   "$VM_ANOMALY_URL/api/v1/compatibility" | jq .
 ```
 
-Report incompatibility and scoped cleanup; do not execute cleanup. No stored state is healthy. Use `?version_to=X.Y.Z` when reviewing an upgrade. Only GET exists in v1.30.
+Report incompatibility and scoped cleanup; do not execute cleanup. No stored state is healthy. Use `?version_to=X.Y.Z` when reviewing an upgrade. Compatibility covers vmanomaly-managed state, supported readers, and built-in models, not custom model code, dependencies, or state; before upgrading to v1.30.3+, custom many-to-one models relying on `is_multivariate = True` must declare `topology = ModelTopology.MANY_TO_ONE`. Only GET exists in v1.30.
 
 For deployed instances, also verify that self-monitoring metrics are collected and that the official dashboard and alerting rules cover service health, scheduler liveness/restarts, reload failures, model errors/skips, I/O failures, and resource pressure. A successful `/health` response alone is insufficient production evidence.
 
@@ -131,6 +131,7 @@ curl -q --config "$VM_CURL_CONFIG" -s \
   "$VM_ANOMALY_URL/api/v1/anomaly_detection/limits" | jq .
 
 MODEL_SPEC_JSON='<validated-model-json>'
+DATASOURCE_URL='<configured-or-explicit-datasource-url>'
 STEP='<configured-step>'
 FIT_WINDOW='<configured-fit-window>'
 FIT_EVERY='<exploratory-fit-cadence>'
@@ -138,6 +139,7 @@ START_INFER_S='<unix-seconds>'
 END_INFER_S='<unix-seconds>'
 jq -n \
   --arg query "$QUERY" \
+  --arg datasource_url "$DATASOURCE_URL" \
   --arg step "$STEP" \
   --arg fit_window "$FIT_WINDOW" \
   --arg fit_every "$FIT_EVERY" \
@@ -145,6 +147,7 @@ jq -n \
   --argjson end_infer_s "$END_INFER_S" \
   --argjson model "$MODEL_SPEC_JSON" '{
     query:$query,
+    datasource_url:$datasource_url,
     step:$step,
     fit_window:$fit_window,
     fit_every:$fit_every,

@@ -46,10 +46,12 @@ curl -q --config "$VM_CURL_CONFIG" -s \
 Interpret compatibility conservatively:
 
 - `global_check.has_state=false`: no persisted state needs migration.
-- `global_check.is_compatible=true`: the checked state can be reused.
+- `global_check.is_compatible=true`: the covered vmanomaly-managed state can be reused.
 - `global_check.drop_everything=true`: report that all persisted state must be dropped; do not perform the drop automatically.
 - `component_assessment.models_to_purge` or `should_purge_reader_data`: report the scoped cleanup.
 - Use `?version_to=X.Y.Z` to assess the stored state against a planned target release.
+
+Compatibility covers vmanomaly-managed state, supported readers, and built-in models, not custom model code, dependencies, or state; before upgrading to v1.30.3+, custom many-to-one models relying on `is_multivariate = True` must declare `topology = ModelTopology.MANY_TO_ONE`.
 
 Only GET compatibility is implemented. Do not invent a POST endpoint for arbitrary provided configs. For configuration syntax, use `/api/v1/config/validate` instead.
 
@@ -179,11 +181,13 @@ curl -q --config "$VM_CURL_CONFIG" -s \
   "$VM_ANOMALY_URL/api/v1/anomaly_detection/limits" | jq .
 ```
 
-Create a task only after validating `model_spec`:
+Create a task only after validating `model_spec`. The v1.30.3 task contract requires an explicit `datasource_url`; reuse the configured datasource URL when appropriate:
 
 ```bash
-jq -n --arg query "$QUERY" '{
+DATASOURCE_URL='<configured-or-explicit-datasource-url>'
+jq -n --arg query "$QUERY" --arg datasource_url "$DATASOURCE_URL" '{
     query:$query,
+    datasource_url:$datasource_url,
     "step":"5m",
     "fit_window":"30d",
     "fit_every":"1000d",

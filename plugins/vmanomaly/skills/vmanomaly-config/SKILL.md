@@ -71,6 +71,8 @@ Treat the compatibility response as a preflight, not a cleanup action:
 - never delete state without explicit user approval;
 - use `?version_to=X.Y.Z` for a planned upgrade.
 
+Compatibility covers vmanomaly-managed state, supported readers, and built-in models, not custom model code, dependencies, or state; before upgrading to v1.30.3+, custom many-to-one models relying on `is_multivariate = True` must declare `topology = ModelTopology.MANY_TO_ONE`.
+
 Only the GET compatibility check exists in v1.30.
 
 ### 4. Profile real data
@@ -167,14 +169,16 @@ curl -q --config "$VM_CURL_CONFIG" -s \
   "$VM_ANOMALY_URL/api/v1/config/validate" | jq .
 ```
 
-Then check capacity and run a bounded detection task using the validated model:
+Then check capacity and run a bounded detection task using the validated model. The v1.30.3 task contract requires an explicit `datasource_url`; reuse the configured datasource URL when appropriate:
 
 ```bash
 curl -q --config "$VM_CURL_CONFIG" -s \
   "$VM_ANOMALY_URL/api/v1/anomaly_detection/limits" | jq .
 
-jq -n --arg query "$QUERY" --slurpfile model model.json '{
+DATASOURCE_URL='<configured-or-explicit-datasource-url>'
+jq -n --arg query "$QUERY" --arg datasource_url "$DATASOURCE_URL" --slurpfile model model.json '{
     query:$query,
+    datasource_url:$datasource_url,
     step:"5m",
     fit_window:"30d",
     fit_every:"1000w",
