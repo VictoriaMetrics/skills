@@ -7,7 +7,7 @@ These skills help AI agents and automation tools understand, operate, and troubl
 
 | Plugin | Skills | Purpose |
 |--------|--------|---------|
-| [query](plugins/query/) | victoriametrics-query, victorialogs-query, victoriatraces-query, alertmanager-query | Query metrics, logs, traces, and alerts |
+| [query](plugins/query/) | victoriametrics-query, victorialogs-query, victoriatraces-query, alertmanager-query, victoriametrics-rules | Query metrics, logs, traces, and alerts, and work with vmalert rules |
 | [diagnostics](plugins/diagnostics/) | vm-trace-analyzer, investigating-with-observability, victoriametrics-cardinality-analysis, victoriametrics-unused-metrics-analysis, stream-aggregation-helper | Query trace analysis, multi-signal investigations, cardinality optimization, unused metric detection, stream aggregation design |
 | [vmanomaly](plugins/vmanomaly/) | vmanomaly-query, vmanomaly-config, vmanomaly-review | Operate the vmanomaly API, build and tune anomaly-detection configurations, and review detection quality |
 | [docs](plugins/docs/) | victoriametrics-docs | Look up a command-line flag, an HTTP API path or a query construct in the published documentation |
@@ -29,6 +29,7 @@ npx skills add VictoriaMetrics/skills --skill victoriametrics-query
 npx skills add VictoriaMetrics/skills --skill victorialogs-query
 npx skills add VictoriaMetrics/skills --skill victoriatraces-query
 npx skills add VictoriaMetrics/skills --skill alertmanager-query
+npx skills add VictoriaMetrics/skills --skill victoriametrics-rules
 npx skills add VictoriaMetrics/skills --skill victoriametrics-docs
 npx skills add VictoriaMetrics/skills --skill investigating-with-observability
 npx skills add VictoriaMetrics/skills --skill vm-trace-analyzer
@@ -67,6 +68,7 @@ Install plugins:
 | victorialogs-query | Search logs with LogsQL, run stats queries, discover fields and streams, analyze log volume |
 | victoriatraces-query | Discover services and operations, search traces by duration/tags, retrieve traces by ID, map dependencies |
 | alertmanager-query | List active/silenced alerts, create and manage silences, check alert inhibition state |
+| victoriametrics-rules | Inspect and debug vmalert alerting and recording rules over HTTP, and work out when a rule would have fired |
 
 ### Diagnostics plugin
 
@@ -105,6 +107,7 @@ Once installed, skills are available as slash commands and are also triggered au
 /query:victorialogs-query               - search logs, run stats, discover fields
 /query:victoriatraces-query             - search traces, discover services, map dependencies
 /query:alertmanager-query               - list alerts, manage silences
+/query:victoriametrics-rules            - debug vmalert rules, check when one fires
 /diagnostics:vm-trace-analyzer          - perform an analysis of the query performance based on provided trace
 /diagnostics:investigating-with-observability - structured multi-signal investigation
 /diagnostics:victoriametrics-cardinality-analysis  - cardinality analysis and optimization recommendations
@@ -119,6 +122,7 @@ Once installed, skills are available as slash commands and are also triggered au
 **Example prompts that trigger skills:**
 
 - "What alerts are currently firing?" → `alertmanager-query`
+- "Why didn't our HighErrorRate alert fire last night?" → `victoriametrics-rules`
 - "Show me error logs for namespace production in the last hour" → `victorialogs-query`
 - "Find slow traces for the checkout service" → `victoriatraces-query`
 - "What's the request rate for my-api over the last 6 hours?" → `victoriametrics-query`
@@ -142,6 +146,7 @@ VM_METRICS_URL        # VictoriaMetrics query endpoint (e.g., http://localhost:8
 VM_LOGS_URL           # VictoriaLogs endpoint (e.g., http://localhost:9428)
 VM_TRACES_URL         # VictoriaTraces with /select/jaeger prefix (e.g., http://localhost:10428/select/jaeger)
 VM_ALERTMANAGER_URL   # AlertManager endpoint (optional)
+VMALERT_URL           # vmalert endpoint (e.g., http://localhost:8880) - note: vmalert, not AlertManager
 VM_ANOMALY_URL        # vmanomaly endpoint, including path prefix if configured (e.g., http://localhost:8490)
 VM_CURL_CONFIG        # Path to a mode-0600 curl config file containing the auth header
                       # (leave unset for unauthenticated local instances - defaults to /dev/null)
