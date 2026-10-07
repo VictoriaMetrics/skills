@@ -46,7 +46,7 @@ Starting public controls:
 | `changepoint_window` | `16` | same-direction samples before persistent-shift adaptation |
 | `seasonalities` | HOD/DOW smooth | remove unsupported profiles; `[]` is valid |
 | `holidays` | `{}` | country/special-event effects; shape learned internally |
-| `forecast_at` | `[]` | keep empty for current-state detection; add only for future-state or capacity-planning needs |
+| `forecast_at` | `[]` | keep empty for current-state detection; add only for future-state forecasting of monitored metrics, not sizing vmanomaly resources |
 
 Calendar presets:
 

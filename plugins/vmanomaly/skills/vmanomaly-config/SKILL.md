@@ -11,6 +11,8 @@ Turn a known monitoring intent into a validated vmanomaly v1.30+ configuration. 
 
 Read `references/model-selection.md` before selecting a model or its parameters. When producing a continuously running deployment, also read `references/deployment-readiness.md` and apply only the controls whose conditions match.
 
+For resource-only questions, use [vmanomaly-sizing](../vmanomaly-sizing/SKILL.md); no model-selection or autotune workflow is required.
+
 ## Environment
 
 ```bash
@@ -122,7 +124,7 @@ Default hierarchy:
 - Use `min_n_samples_seen` to suppress scores during cold-start; express its duration as samples multiplied by query step.
 - For stable MAD, Z-score, or online-quantile data, consider `history_strength > 1` instead of many extra fit cycles; keep enough history to cover every required seasonal phase.
 - Select only calendar presets supported by the profile. Temporal Envelope profiles are timezone- and DST-aware; set `reader.queries.<alias>.tz` (or the reader-level `tz`) to the same IANA timezone used during profiling.
-- Keep `forecast_at` empty unless the user needs future-state forecasting or capacity planning.
+- Keep `forecast_at` empty unless the user needs future-state forecasting of monitored metrics. Sizing vmanomaly itself does not require forecasts.
 - Keep multivariate `groupby`, holidays, and other domain structure fixed during autotune.
 
 ### 7. Choose direct configuration or shared autotune
