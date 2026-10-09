@@ -1,4 +1,4 @@
-# vmanomaly v1.30 model-selection reference
+# vmanomaly model-selection reference
 
 Use this after profiling real data. Runtime `/api/v1/models` and `/api/v1/model/schema` results override static examples.
 
@@ -7,6 +7,7 @@ Use this after profiling real data. Runtime `/api/v1/models` and `/api/v1/model/
 - [Decision tree](#decision-tree)
 - [Temporal Envelope](#temporal-envelope)
 - [Simple online models](#simple-online-models)
+- [Peer populations](#peer-populations)
 - [Legacy offline models](#legacy-offline-models)
 - [Fit-window and cadence guidance](#fit-window-and-cadence-guidance)
 - [Autotune guidance](#autotune-guidance)
@@ -22,6 +23,7 @@ Can a static rule clearly express failure?
    │  ├─ skewed/heavy-tailed/spike-contaminated → mad_online
    │  └─ stable/light-tailed and magnitude matters → zscore_online
    ├─ seasonal quantiles with absent/slow trend → quantile_online
+   ├─ comparable entities diverging from their peers → peer_outlier (v1.31.0+, experimental)
    └─ cross-series relationship is the signal
       └─ temporal_envelope_multivariate
 ```
@@ -97,6 +99,12 @@ Use when the profile is stable/light-tailed and standard-deviation magnitude is 
 Use for seasonal quantile behavior with absent or slow trend. It requires enough observations in each seasonal bucket and is not a general trend model.
 
 For stable MAD, Z-score, and online-quantile distributions, use `history_strength > 1` (typically `2`–`3`) to reduce the leverage of new observations without fitting many extra historical cycles. This can reduce fit-time data, CPU, and RAM, but it does not replace coverage of every required seasonal phase and should not anchor a genuinely changing regime.
+
+## Peer populations
+
+On v1.31.0+ servers exposing `peer_outlier`, use it for comparable replicas, hosts or load balancers whose unusual members matter. Queries form independent populations; `groupby` subdivides each query by shared labels. Keep identity labels such as `instance` in query results but out of `groupby`. Require enough aligned reporting peers for `min_peer_count` (default 5) and a strict-majority normal population. It produces per-peer scores, not a multivariate joint score; use a temporal model alongside it for coordinated shifts affecting everyone.
+
+Shared tuning and `auto` support this model. Freeze grouping through `frozen_params.groupby` (nested inside `optimization_params` for `auto`); do not tune individual peers as unrelated univariate series. Prefer shared tuning for a concrete deployable configuration. Keep `optimized_business_params: []` and explicit business policies on named queries. For resource estimates, use [vmanomaly-sizing](../../vmanomaly-sizing/SKILL.md): a tuned model's fit/inference estimate does not include optimization-search costs.
 
 ## Legacy offline models
 

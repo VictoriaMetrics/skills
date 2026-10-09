@@ -9,7 +9,7 @@ These skills help AI agents and automation tools understand, operate, and troubl
 |--------|--------|---------|
 | [query](plugins/query/) | victoriametrics-query, victorialogs-query, victoriatraces-query, alertmanager-query | Query metrics, logs, traces, and alerts |
 | [diagnostics](plugins/diagnostics/) | vm-trace-analyzer, investigating-with-observability, victoriametrics-cardinality-analysis, victoriametrics-unused-metrics-analysis, stream-aggregation-helper | Query trace analysis, multi-signal investigations, cardinality optimization, unused metric detection, stream aggregation design |
-| [vmanomaly](plugins/vmanomaly/) | vmanomaly-query, vmanomaly-config, vmanomaly-review, vmanomaly-sizing | Operate the vmanomaly API, build and tune anomaly-detection configurations, and review detection quality |
+| [vmanomaly](plugins/vmanomaly/) | vmanomaly-query, vmanomaly-config, vmanomaly-review, vmanomaly-sizing | Operate the vmanomaly API, build and tune anomaly-detection configurations, review detection quality, and estimate deployment resources and inference capacity |
 | [docs](plugins/docs/) | victoriametrics-docs | Look up a command-line flag, an HTTP API path or a query construct in the published documentation |
 
 ## Installation
@@ -92,7 +92,7 @@ Install plugins:
 | vmanomaly-query | Operate vmanomaly v1.30+ HTTP APIs for health, compatibility, schemas, profiling, shared autotune, validation, and bounded detection tasks |
 | vmanomaly-config | Triage static alerting versus ML, select and tune a model from real time-series characteristics, and produce validated deployment artifacts |
 | vmanomaly-review | Audit an existing configuration against runtime schemas and real data, reproduce detections, and verify proposed fixes |
-| vmanomaly-sizing | Estimate deployment resources or inference capacity at fixed CPU/RAM, with explicit workload and sharding assumptions |
+| vmanomaly-sizing | (experimental, v1.31.0+) Estimate deployment resources or inference capacity at fixed CPU/RAM, with explicit workload and sharding assumptions |
 
 Each vmanomaly skill is independently installable. When query or diagnostics skills are also
 available, the vmanomaly workflows can use them for metric/log discovery, cardinality checks,
