@@ -9,7 +9,7 @@ These skills help AI agents and automation tools understand, operate, and troubl
 |--------|--------|---------|
 | [query](plugins/query/) | victoriametrics-query, victorialogs-query, victoriatraces-query, alertmanager-query | Query metrics, logs, traces, and alerts |
 | [diagnostics](plugins/diagnostics/) | vm-trace-analyzer, investigating-with-observability, victoriametrics-cardinality-analysis, victoriametrics-unused-metrics-analysis, stream-aggregation-helper | Query trace analysis, multi-signal investigations, cardinality optimization, unused metric detection, stream aggregation design |
-| [vmanomaly](plugins/vmanomaly/) | vmanomaly-query, vmanomaly-config, vmanomaly-review | Operate the vmanomaly API, build and tune anomaly-detection configurations, and review detection quality |
+| [vmanomaly](plugins/vmanomaly/) | vmanomaly-query, vmanomaly-config, vmanomaly-review, vmanomaly-sizing | Operate the vmanomaly API, build and tune anomaly-detection configurations, review detection quality, and estimate deployment resources and inference capacity |
 | [docs](plugins/docs/) | victoriametrics-docs | Look up a command-line flag, an HTTP API path or a query construct in the published documentation |
 
 ## Installation
@@ -38,6 +38,7 @@ npx skills add VictoriaMetrics/skills --skill stream-aggregation-helper
 npx skills add VictoriaMetrics/skills --skill vmanomaly-query
 npx skills add VictoriaMetrics/skills --skill vmanomaly-config
 npx skills add VictoriaMetrics/skills --skill vmanomaly-review
+npx skills add VictoriaMetrics/skills --skill vmanomaly-sizing
 ```
 
 ### Via Claude Code plugin marketplace
@@ -91,6 +92,7 @@ Install plugins:
 | vmanomaly-query | Operate vmanomaly v1.30+ HTTP APIs for health, compatibility, schemas, profiling, shared autotune, validation, and bounded detection tasks |
 | vmanomaly-config | Triage static alerting versus ML, select and tune a model from real time-series characteristics, and produce validated deployment artifacts |
 | vmanomaly-review | Audit an existing configuration against runtime schemas and real data, reproduce detections, and verify proposed fixes |
+| vmanomaly-sizing | (experimental, v1.31.0+) Estimate deployment resources or inference capacity at fixed CPU/RAM, with explicit workload and sharding assumptions |
 
 Each vmanomaly skill is independently installable. When query or diagnostics skills are also
 available, the vmanomaly workflows can use them for metric/log discovery, cardinality checks,
@@ -113,6 +115,7 @@ Once installed, skills are available as slash commands and are also triggered au
 /vmanomaly:vmanomaly-query                         - inspect and operate the vmanomaly API
 /vmanomaly:vmanomaly-config                        - build and tune a validated anomaly configuration
 /vmanomaly:vmanomaly-review                        - audit an existing anomaly configuration
+/vmanomaly:vmanomaly-sizing                        - estimate deployment resources or fixed-resource inference capacity
 /docs:victoriametrics-docs                         - check a flag, an API path or a query construct against the docs
 ```
 
@@ -130,6 +133,7 @@ Once installed, skills are available as slash commands and are also triggered au
 - "Profile this query and choose a vmanomaly model" → `vmanomaly-config`
 - "Check whether my persisted vmanomaly state is compatible with v1.30" → `vmanomaly-query`
 - "Review why this anomaly model produces too many detections" → `vmanomaly-review`
+- "How many MAD time series can vmanomaly serve with 8 CPUs and 6 GiB RAM, inferring every 2 minutes?" → `vmanomaly-sizing`
 - "Is there a flag to change the retention period?" → `victoriametrics-docs`
 
 ## Environment Variables
