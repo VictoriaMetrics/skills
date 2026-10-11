@@ -50,6 +50,14 @@ def require_pin(image: str) -> None:
         raise ValueError('Use explicit image versions or digests, not latest')
 
 
+def require_url(value: Any, field: str) -> None:
+    """Reject missing or padded destinations without modifying validated inputs."""
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f'Deployment rendering requires an explicit {field}')
+    if value != value.strip():
+        raise ValueError(f'{field} must not contain surrounding whitespace')
+
+
 def check_credentials(value: Any) -> None:
     """Reject common inline credential fields; this is not a general secret scanner."""
     if isinstance(value, dict):
@@ -101,10 +109,7 @@ def render(
     for section in ('reader', 'writer'):
         settings = config.get(section)
         url = settings.get('datasource_url') if isinstance(settings, dict) else None
-        if not isinstance(url, str) or not url.strip():
-            raise ValueError(f'Deployment rendering requires an explicit {section} datasource URL')
-        if url != url.strip():
-            raise ValueError(f'{section} datasource URL must not contain surrounding whitespace')
+        require_url(url, f'{section} datasource URL')
     target = spec['deployment']
     require_pin(spec['vmanomaly_image'])
     fmt = config['writer'].get('metric_format', {'__name__': '$VAR', 'for': '$QUERY_KEY'})
@@ -143,6 +148,8 @@ def render(
         'Credential/TLS mounts and durable model/data storage',
     ]
     if target == 'compose':
+        for field in ('score_datasource_url', 'notifier_url'):
+            require_url(spec.get(field), field)
         require_pin(spec['vmalert_image'])
         files['compose.yaml'] = encode(
             {

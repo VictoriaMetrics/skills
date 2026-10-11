@@ -127,6 +127,15 @@ class BundleTests(unittest.TestCase):
                             self.render()
                         self.assertEqual(json.dumps(self.artifacts), before)
 
+    def test_compose_requires_unpadded_alert_destinations(self):
+        for field in ('score_datasource_url', 'notifier_url'):
+            for value in (None, '', ' ', 1, ' https://example.com', 'https://example.com\n'):
+                with self.subTest(field=field, value=value):
+                    self.setUp()
+                    self.spec[field] = value
+                    with self.assertRaisesRegex(ValueError, field):
+                        self.render()
+
     def test_checks_credentials_in_all_exported_inputs(self):
         for field in ('api_key', 'access_token', 'password'):
             for source in ('config', 'alert_rules', 'warnings', 'spec', 'anomaly', 'monitoring'):
