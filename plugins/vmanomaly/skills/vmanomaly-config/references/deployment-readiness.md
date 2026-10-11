@@ -45,6 +45,10 @@ Use content-polled hot reload when configuration files or Kubernetes ConfigMaps 
 
 Do not promise zero model reinitialization: changing model parameters, queries, schedulers, or shard assignment may require new state.
 
+## Deployment sizing
+
+For v1.31.0+, use [vmanomaly-sizing](../../vmanomaly-sizing/SKILL.md) to estimate resources for a known workload or inference capacity at fixed CPU/RAM. Distinguish bootstrap peaks from steady inference, preserve query placement, and treat estimates as experimental. CrashLoopBackOff alone does not establish OOM.
+
 ## Workload and resource controls
 
 | Control | Recommend when | Avoid as a blanket default |

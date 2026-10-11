@@ -202,6 +202,10 @@ jq -n --arg query "$QUERY" --arg datasource_url "$DATASOURCE_URL" '{
 
 Use `exact:true` for causal online-model evaluation. Poll sequentially and never create duplicate tasks merely because a task is still running.
 
+## Estimate deployment resources
+
+For v1.31.0+ CPU/RAM/disk sizing or reverse inference-capacity questions, use [vmanomaly-sizing](../vmanomaly-sizing/SKILL.md). This is separate from forecasting monitored metrics and from detection-task admission limits.
+
 ## Generate deployment artifacts
 
 Use `/api/vmanomaly/config.yaml` for an example configuration and `/api/vmanomaly/example-alert-rule.yaml` for a VMAlert rule. Pass values with `--data-urlencode`. The config endpoint preserves compatibility-oriented model-level business fields. For v1.30.2+ deployment YAML, move `data_range`, `detection_direction`, `min_dev_from_expected`, and `min_rel_dev_from_expected` to `reader.queries.<alias>`, consider `reader.workers: 0` for bounded datasource concurrency, and validate the resulting complete configuration before presenting it.
