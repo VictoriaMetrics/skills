@@ -1,0 +1,135 @@
+"""Deterministic artifact assembly tests; these do not claim live deployment validation."""
+
+import hashlib
+import importlib.util
+import json
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+SCRIPT = Path(__file__).parents[1] / 'skills/vmanomaly-preset/scripts/render_bundle.py'
+spec = importlib.util.spec_from_file_location('render_bundle', SCRIPT)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+
+class BundleTests(unittest.TestCase):
+    def setUp(self):
+        self.artifacts = {
+            'schema_version': 1,
+            'validation': 'schema-valid',
+            'warnings': ['fixture'],
+            'config': {
+                'reader': {'datasource_url': 'https://read.example'},
+                'writer': {'datasource_url': 'https://write.example'},
+                'models': {'a': {'queries': ['q1', 'q2']}},
+            },
+            'alert_rules': {'groups': []},
+        }
+        self.spec = {
+            'name': 'demo',
+            'deployment': 'compose',
+            'vmanomaly_image': 'victoriametrics/vmanomaly:v1.31.0',
+            'vmalert_image': 'victoriametrics/vmalert:v1.126.0',
+            'score_datasource_url': 'https://scores.example',
+            'notifier_url': 'https://notify.example',
+            'anomaly_datasource_uid': 'scores',
+            'monitoring_datasource_uid': 'monitoring',
+        }
+        self.anomaly = {
+            'id': 1,
+            'uid': 'existing',
+            'panels': [{'targets': [{'expr': 'keep{for="q1|q2"}'}]}],
+            'templating': {'list': [{'name': 'DS_VM'}, {'name': 'preset'}, {'name': 'vmanomaly_prefix'}]},
+        }
+        self.monitoring = {'templating': {'list': [{'name': 'DS_PROMETHEUS'}, {'name': 'preset'}]}}
+
+    def render(self):
+        return module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
+
+    def test_preserves_queries_and_distinct_datasources(self):
+        files = self.render()
+        config = json.loads(files['vmanomaly.yaml'])
+        self.assertEqual(config, self.artifacts['config'])
+        dash = json.loads(files['anomaly-dashboard.json'])
+        self.assertEqual(dash['panels'], self.anomaly['panels'])
+        self.assertNotIn('uid', dash)
+        compose = json.loads(files['compose.yaml'])
+        self.assertIn('-datasource.url=https://scores.example', compose['services']['vmalert']['command'])
+        self.assertEqual(compose['services']['vmanomaly']['command'], ['/config/vmanomaly.yaml'])
+        manifest = json.loads(files['manifest.json'])
+        self.assertIn('Live startup', manifest['pending_validation'])
+        self.assertEqual(manifest['warnings'], ['fixture'])
+        self.assertEqual(files, self.render())
+
+    def test_kubernetes_modes(self):
+        for mode in ['helm', 'operator']:
+            with self.subTest(mode=mode):
+                self.spec.update(
+                    deployment=mode,
+                    chart_version='1.0.0',
+                    operator_version='0.1.0',
+                    namespace='monitoring',
+                    license_secret='existing-license',
+                    rule_labels={'team': 'observability'},
+                )
+                files = self.render()
+                if mode == 'helm':
+                    self.assertEqual(json.loads(files['values.yaml'])['config'], self.artifacts['config'])
+                else:
+                    cr = json.loads(files['vmanomaly-resource.yaml'])
+                    self.assertEqual(json.loads(cr['spec']['configRawYaml']), self.artifacts['config'])
+                    self.assertNotIn('configSecret', cr['spec'])
+                    self.assertEqual(cr['spec']['replicaCount'], 1)
+
+    def test_rejects_mutable_image_and_inline_credentials(self):
+        self.spec['vmanomaly_image'] = 'victoriametrics/vmanomaly:latest'
+        with self.assertRaises(ValueError):
+            self.render()
+        self.spec['vmanomaly_image'] = 'victoriametrics/vmanomaly:v1.31.0'
+        self.artifacts['config']['reader']['password'] = 'do-not-export'
+        with self.assertRaises(ValueError):
+            self.render()
+
+    def test_rejects_unsupported_dashboard_format(self):
+        self.artifacts['config']['writer']['metric_format'] = {'__name__': '$VAR_suffix', 'for': '$QUERY_KEY'}
+        with self.assertRaises(ValueError):
+            self.render()
+
+    def test_cli_verifies_checksums_and_never_overwrites(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = {}
+            for name, value in [
+                ('artifacts', self.artifacts),
+                ('anomaly-dashboard', self.anomaly),
+                ('monitoring-dashboard', self.monitoring),
+            ]:
+                paths[name] = root / (name + '.json')
+                paths[name].write_text(json.dumps(value), encoding='utf-8')
+            self.spec['dashboard_sha256'] = {
+                label: hashlib.sha256(paths[name].read_bytes()).hexdigest()
+                for label, name in [('anomaly', 'anomaly-dashboard'), ('monitoring', 'monitoring-dashboard')]
+            }
+            paths['spec'] = root / 'spec.json'
+            paths['spec'].write_text(json.dumps(self.spec), encoding='utf-8')
+            paths['output'] = root / 'bundle'
+            command = [sys.executable, str(SCRIPT)]
+            for name, path in paths.items():
+                command.extend(['--' + name, str(path)])
+            result = subprocess.run(command, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = (paths['output'] / 'manifest.json').read_bytes()
+            self.assertNotEqual(subprocess.run(command, capture_output=True, timeout=10).returncode, 0)
+            self.assertEqual((paths['output'] / 'manifest.json').read_bytes(), manifest)
+            paths['anomaly-dashboard'].write_text('{}', encoding='utf-8')
+            command[-1] = str(root / 'mismatch')
+            result = subprocess.run(command, capture_output=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse((root / 'mismatch').exists())
+
+
+if __name__ == '__main__':
+    unittest.main()

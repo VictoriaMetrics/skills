@@ -38,6 +38,7 @@ npx skills add VictoriaMetrics/skills --skill stream-aggregation-helper
 npx skills add VictoriaMetrics/skills --skill vmanomaly-query
 npx skills add VictoriaMetrics/skills --skill vmanomaly-config
 npx skills add VictoriaMetrics/skills --skill vmanomaly-review
+npx skills add VictoriaMetrics/skills --skill vmanomaly-preset
 ```
 
 ### Via Claude Code plugin marketplace
@@ -90,6 +91,7 @@ Install plugins:
 |-------|---------|
 | vmanomaly-query | Operate vmanomaly v1.30+ HTTP APIs for health, compatibility, schemas, profiling, shared autotune, validation, and bounded detection tasks |
 | vmanomaly-config | Triage static alerting versus ML, select and tune a model from real time-series characteristics, and produce validated deployment artifacts |
+| vmanomaly-preset | Discover scoped signals and assemble configuration, alert rules, dashboards and deployment files with explicit validation evidence |
 | vmanomaly-review | Audit an existing configuration against runtime schemas and real data, reproduce detections, and verify proposed fixes |
 
 Each vmanomaly skill is independently installable. When query or diagnostics skills are also
