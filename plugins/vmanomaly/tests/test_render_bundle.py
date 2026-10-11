@@ -104,6 +104,29 @@ class BundleTests(unittest.TestCase):
                         with self.assertRaisesRegex(ValueError, f'explicit {section} datasource URL'):
                             self.render()
 
+    def test_bundle_name_boundaries(self):
+        for name in ('0', '2024-prod', 'a', 'a' * 63):
+            with self.subTest(name=name):
+                self.spec['name'] = name
+                self.assertEqual(json.loads(self.render()['manifest.json'])['name'], name)
+        for name in ('', '-demo', 'demo-', 'Demo', 'a' * 64, 'demo.example', 'demo_1'):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'DNS label'):
+                self.spec['name'] = name
+                self.render()
+
+    def test_rejects_padded_urls_without_mutating_inputs(self):
+        for target in ('compose', 'helm', 'operator'):
+            for section in ('reader', 'writer'):
+                for url in (' https://example.com', 'https://example.com\n', '\thttps://example.com '):
+                    with self.subTest(target=target, section=section, url=url):
+                        self.setUp()
+                        self.spec['deployment'] = target
+                        self.artifacts['config'][section]['datasource_url'] = url
+                        before = json.dumps(self.artifacts)
+                        with self.assertRaisesRegex(ValueError, 'surrounding whitespace'):
+                            self.render()
+                        self.assertEqual(json.dumps(self.artifacts), before)
+
     def test_checks_credentials_in_all_exported_inputs(self):
         for field in ('api_key', 'access_token', 'password'):
             for source in ('config', 'alert_rules', 'warnings', 'spec', 'anomaly', 'monitoring'):

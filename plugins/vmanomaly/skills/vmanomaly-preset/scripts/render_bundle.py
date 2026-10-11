@@ -96,13 +96,15 @@ def render(
     for value in (artifacts, spec, anomaly, monitoring):
         check_credentials(value)
     name = spec['name']
-    if not isinstance(name, str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,61}[a-z0-9]|[a-z]', name):
+    if not isinstance(name, str) or not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', name):
         raise ValueError('name must be a DNS label')
     for section in ('reader', 'writer'):
         settings = config.get(section)
         url = settings.get('datasource_url') if isinstance(settings, dict) else None
         if not isinstance(url, str) or not url.strip():
             raise ValueError(f'Deployment rendering requires an explicit {section} datasource URL')
+        if url != url.strip():
+            raise ValueError(f'{section} datasource URL must not contain surrounding whitespace')
     target = spec['deployment']
     require_pin(spec['vmanomaly_image'])
     fmt = config['writer'].get('metric_format', {'__name__': '$VAR', 'for': '$QUERY_KEY'})
