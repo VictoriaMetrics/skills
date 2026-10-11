@@ -4,7 +4,7 @@ Use this when a validated configuration will run continuously. Keep small deploy
 
 ## Cadence and validation evidence
 
-When the user has not specified reaction time, start with five-minute sampling and inference; use a different minute-scale cadence when the signal warrants it. Preserve explicit sub-minute requirements and existing query resolution. Explain the resulting resource cost and total alert delay, including ingestion, inference, rule evaluation and persistence. A rule's `for` duration does not establish a count of independent anomalous observations.
+When the user has not specified reaction time, start with five-minute inference (`infer_every`); use a different minute-scale inference cadence when the signal warrants it. Choose query step separately from inference cadence based on source resolution and the shortest events of interest; preserve existing query resolution and explicit sub-minute requirements. Explain the resulting resource cost and total alert delay, including ingestion, inference, rule evaluation and persistence. A rule's `for` duration does not establish a count of independent anomalous observations.
 
 Report validation separately: schema-valid, data-tested, deployment-rendered, and live-tested. Record the versions, window and outcome for each completed check. Unresolved URLs, tenants, credentials or license references prevent a live-tested claim. An anomaly-score fraction is not a notification budget or an accuracy guarantee.
 
