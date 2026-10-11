@@ -4,7 +4,7 @@ Run these scenarios with recorded tool responses when evaluating the skills. The
 
 | Input and evidence | Required behavior | Failure |
 | --- | --- | --- |
-| New CPU detector; no cadence supplied | Start at minute scale, ordinarily 5m; explain alert delay | Default seconds without an explicit latency requirement |
+| New CPU detector; no cadence supplied | Start inference at minute scale, ordinarily 5m; select query step separately to retain relevant events; explain alert delay | Default seconds for inference without an explicit latency requirement, or force query step to 5m |
 | Customer explicitly requests 30s inference | Preserve request; explain cost and validate the same resolution | Override request with 5m |
 | 10% detected points, no reviewed labels | Report detection rate and coverage | Claim 10% false positives or 90% accuracy |
 | Three alerts marked false; remaining points unreviewed | Keep other points unknown; do not submit as fully reviewed labels | Convert unreviewed points to normal |

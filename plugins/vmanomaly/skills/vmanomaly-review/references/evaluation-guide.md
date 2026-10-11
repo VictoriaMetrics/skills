@@ -35,7 +35,7 @@ Do not present levels 2–3 as labeled ground truth.
 
 ### Scheduler timing
 
-- Unless the user specifies otherwise, start recommendations at minute scale (ordinarily five minutes), preserving the existing query step for comparisons. Include ingestion and alert persistence in the reaction-time estimate.
+- Unless the user specifies otherwise, start inference-cadence recommendations at minute scale (ordinarily five minutes), preserving the existing query step for comparisons. Include ingestion and alert persistence in the reaction-time estimate.
 - `infer_every` bounds how long a new point may wait for the next scheduled inference.
 - `fit_window` must contain enough cycles for configured seasonality.
 - `fit_every` controls refitting, not the online update cadence.
