@@ -4,7 +4,7 @@ Recipes are query-construction hints, not pre-approved production expressions. D
 
 | Domain | Candidate | Construction and guardrails |
 | --- | --- | --- |
-| node-exporter | CPU busy fraction | Derive from `rate(node_cpu_seconds_total{mode="idle", ...}[5m])`; aggregate CPU cores within the host, then subtract from 1. Preserve tenant/cluster/job/instance identity. Bounded 0–1; consider upper temporal deviations and a separate hard saturation rule. |
+| node-exporter | CPU busy fraction | Derive from `rate(node_cpu_seconds_total{mode="idle", ...}[5m])`; average idle rates across CPU cores within each host (`avg without (cpu)`), then subtract from 1. Preserve tenant/cluster/job/instance identity. Bounded 0–1; consider upper temporal deviations and a separate hard saturation rule. |
 | node-exporter | Context switches | `rate(node_context_switches_total{...}[5m])`; per-host temporal baseline, both directions only when operationally relevant. Counter resets must not become artificial spikes. |
 | node-exporter | Disk availability | Available/size ratio with matching filesystem identity; exclude irrelevant pseudo-filesystems only after discovery. Prefer a static capacity rule; no universal threshold is imposed. |
 | VictoriaMetrics | Ingestion | Rate of the discovered rows-added/inserted counter, grouped by relevant component/tenant. Verify replication and component semantics before summing; drops and unexpected growth have different business meanings. |

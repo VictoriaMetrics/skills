@@ -93,6 +93,44 @@ class BundleTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.render()
 
+    def test_requires_reader_and_writer_destinations_for_every_target(self):
+        for target in ('compose', 'helm', 'operator'):
+            for section in ('reader', 'writer'):
+                for settings in (None, {}, {'datasource_url': ''}, {'datasource_url': '  '}, {'datasource_url': 1}):
+                    with self.subTest(target=target, section=section, settings=settings):
+                        self.setUp()
+                        self.spec['deployment'] = target
+                        self.artifacts['config'][section] = settings
+                        with self.assertRaisesRegex(ValueError, f'explicit {section} datasource URL'):
+                            self.render()
+
+    def test_checks_credentials_in_all_exported_inputs(self):
+        for field in ('api_key', 'access_token', 'password'):
+            for source in ('config', 'alert_rules', 'warnings', 'spec', 'anomaly', 'monitoring'):
+                with self.subTest(field=field, source=source):
+                    self.setUp()
+                    value = {'nested': [{field: 'do-not-export'}]}
+                    if source == 'warnings':
+                        self.artifacts['warnings'] = [value]
+                    else:
+                        target = (
+                            self.artifacts[source] if source in ('config', 'alert_rules') else getattr(self, source)
+                        )
+                        target['extra'] = value
+                    with self.assertRaisesRegex(ValueError, 'inline credentials'):
+                        self.render()
+        self.setUp()
+        self.spec['credentials'] = {'api_key_file': '/secrets/key', 'access_token_file': '/secrets/token'}
+        self.render()
+
+    def test_image_reference_syntax(self):
+        for image in ('repo:latest ', 'repo:v1 bad', 'repo:', 'repo', 'repo:tag/path', 'repo@sha256:bad'):
+            with self.subTest(image=image), self.assertRaises(ValueError):
+                module.require_pin(image)
+        for image in ('repo:v', 'repo:build-abc', 'registry:5000/repo:v1.2.3', 'repo@sha256:' + 'a' * 64):
+            with self.subTest(image=image):
+                module.require_pin(image)
+
     def test_rejects_unsupported_dashboard_format(self):
         self.artifacts['config']['writer']['metric_format'] = {'__name__': '$VAR_suffix', 'for': '$QUERY_KEY'}
         with self.assertRaises(ValueError):
@@ -124,10 +162,12 @@ class BundleTests(unittest.TestCase):
             manifest = (paths['output'] / 'manifest.json').read_bytes()
             self.assertNotEqual(subprocess.run(command, capture_output=True, timeout=10).returncode, 0)
             self.assertEqual((paths['output'] / 'manifest.json').read_bytes(), manifest)
-            paths['anomaly-dashboard'].write_text('{}', encoding='utf-8')
+            tampered = {**self.anomaly, 'title': 'A different valid title'}
+            paths['anomaly-dashboard'].write_text(json.dumps(tampered), encoding='utf-8')
             command[-1] = str(root / 'mismatch')
             result = subprocess.run(command, capture_output=True, timeout=10)
             self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b'Checksum mismatch', result.stderr)
             self.assertFalse((root / 'mismatch').exists())
 
 

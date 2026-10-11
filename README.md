@@ -9,7 +9,7 @@ These skills help AI agents and automation tools understand, operate, and troubl
 |--------|--------|---------|
 | [query](plugins/query/) | victoriametrics-query, victorialogs-query, victoriatraces-query, alertmanager-query | Query metrics, logs, traces, and alerts |
 | [diagnostics](plugins/diagnostics/) | vm-trace-analyzer, investigating-with-observability, victoriametrics-cardinality-analysis, victoriametrics-unused-metrics-analysis, stream-aggregation-helper | Query trace analysis, multi-signal investigations, cardinality optimization, unused metric detection, stream aggregation design |
-| [vmanomaly](plugins/vmanomaly/) | vmanomaly-query, vmanomaly-config, vmanomaly-review | Operate the vmanomaly API, build and tune anomaly-detection configurations, and review detection quality |
+| [vmanomaly](plugins/vmanomaly/) | vmanomaly-query, vmanomaly-config, vmanomaly-preset, vmanomaly-review | Operate the vmanomaly API, build and tune anomaly-detection configurations, and review detection quality |
 | [docs](plugins/docs/) | victoriametrics-docs | Look up a command-line flag, an HTTP API path or a query construct in the published documentation |
 
 ## Installation
@@ -114,6 +114,7 @@ Once installed, skills are available as slash commands and are also triggered au
 /diagnostics:stream-aggregation-helper             - design and verify stream aggregation rules
 /vmanomaly:vmanomaly-query                         - inspect and operate the vmanomaly API
 /vmanomaly:vmanomaly-config                        - build and tune a validated anomaly configuration
+/vmanomaly:vmanomaly-preset                        - assemble a scoped monitoring bundle
 /vmanomaly:vmanomaly-review                        - audit an existing anomaly configuration
 /docs:victoriametrics-docs                         - check a flag, an API path or a query construct against the docs
 ```

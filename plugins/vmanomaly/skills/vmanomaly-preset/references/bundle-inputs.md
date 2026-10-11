@@ -25,7 +25,7 @@ Common deployment specification fields:
 }
 ```
 
-Replace placeholders with verified versions and destinations. For Helm add `chart_version`, `license_secret`, optional `license_secret_key` and measured `resources`. For Operator add `operator_version`, `namespace`, `license_secret`, optional `license_secret_key`, measured `resources` and `rule_labels` matching the intended VMAlert selector. Image tags must be explicit; this first Kubernetes renderer does not support digest-form images.
+Replace placeholders with verified versions and destinations. For Helm add `chart_version`, `license_secret`, optional `license_secret_key` and measured `resources`. For Operator add `operator_version`, `namespace`, `license_secret`, optional `license_secret_key`, measured `resources` and `rule_labels` matching the intended VMAlert selector. Image tags must be explicit and verified against the chosen registry; a tag is not proof of immutable content. Use a digest for Compose when immutability is required. This first Kubernetes renderer does not support digest-form images.
 
 Compose expects `VMANOMALY_LICENSE_FILE` to reference an existing local license file. Configure additional authentication/TLS mounts, durable state paths and reachable service/UI addresses before live validation. Helm emits vmanomaly chart values plus separate rule/dashboard files; it does not assume the customer has installed a particular vmalert chart. Operator emits VMAnomaly and VMRule; it does not install an operator, VMAlert or Grafana.
 

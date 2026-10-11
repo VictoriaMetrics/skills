@@ -40,9 +40,11 @@ def sha256(data: bytes) -> str:
 
 
 def require_pin(image: str) -> None:
+    """Require an explicit tag or SHA-256 digest; registry existence is checked separately."""
     if (
         not isinstance(image, str)
-        or not re.search(r'(@sha256:[a-f0-9]{64}|:[^/:]+)$', image)
+        or re.search(r'\s', image)
+        or not re.fullmatch(r'[^@\s]+(?:@sha256:[a-f0-9]{64}|:[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})', image)
         or image.endswith(':latest')
     ):
         raise ValueError('Use explicit image versions or digests, not latest')
@@ -52,9 +54,10 @@ def check_credentials(value: Any) -> None:
     """Reject common inline credential fields; this is not a general secret scanner."""
     if isinstance(value, dict):
         for key, item in value.items():
-            if (key.lower() in {'password', 'bearer_token', 'authorization', 'license_key'} and item) or (
-                key.lower() == 'license' and isinstance(item, dict) and item.get('key')
-            ):
+            if (
+                key.lower() in {'password', 'bearer_token', 'access_token', 'api_key', 'authorization', 'license_key'}
+                and item
+            ) or (key.lower() == 'license' and isinstance(item, dict) and item.get('key')):
                 raise ValueError('Use file/secret references instead of inline credentials')
             check_credentials(item)
     elif isinstance(value, list):
@@ -90,13 +93,16 @@ def render(
         raise ValueError('Expected schema-valid artifact API v1 response')
     config = artifacts['config']
     rules = artifacts['alert_rules']
-    check_credentials(config)
-    check_credentials(spec)
+    for value in (artifacts, spec, anomaly, monitoring):
+        check_credentials(value)
     name = spec['name']
     if not isinstance(name, str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,61}[a-z0-9]|[a-z]', name):
         raise ValueError('name must be a DNS label')
-    if not isinstance(config.get('reader'), dict) or 'datasource_url' not in config['reader']:
-        raise ValueError('Deployment rendering requires an explicit reader datasource URL')
+    for section in ('reader', 'writer'):
+        settings = config.get(section)
+        url = settings.get('datasource_url') if isinstance(settings, dict) else None
+        if not isinstance(url, str) or not url.strip():
+            raise ValueError(f'Deployment rendering requires an explicit {section} datasource URL')
     target = spec['deployment']
     require_pin(spec['vmanomaly_image'])
     fmt = config['writer'].get('metric_format', {'__name__': '$VAR', 'for': '$QUERY_KEY'})
