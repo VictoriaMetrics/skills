@@ -35,6 +35,7 @@ Do not present levels 2–3 as labeled ground truth.
 
 ### Scheduler timing
 
+- Unless the user specifies otherwise, start recommendations at minute scale (ordinarily five minutes), preserving the existing query step for comparisons. Include ingestion and alert persistence in the reaction-time estimate.
 - `infer_every` bounds how long a new point may wait for the next scheduled inference.
 - `fit_window` must contain enough cycles for configured seasonality.
 - `fit_every` controls refitting, not the online update cadence.
@@ -100,6 +101,14 @@ Report metrics appropriate to the event:
 - forecast/boundary error only for models that produce those outputs.
 
 Evaluate online models causally. Batch inference can leak future observations into validation and select parameters that underperform in production exact inference.
+
+### Partial feedback
+
+Unreviewed points are unknown, not normal. Current supervised tuning treats the unmarked remainder of each reviewed series as normal; do not submit sparse false-positive feedback through that contract. Request a fully reviewed window or retain the feedback as evidence for a candidate comparison. Normal-only feedback cannot establish recall or select an unrestricted supervised optimum.
+
+Report precision only among reviewed detections when reviews were selected from alerts. Review missed incidents and below-threshold windows before claiming recall. Keep joint-group judgments separate from channel labels and peer-member judgments; individually normal channels can still have an anomalous relationship.
+
+For relative deviation proposals, match runtime semantics: percentages are measured against the magnitude of the expected value, with separate below/above thresholds. Near-zero expectations require an absolute guardrail. Test proposed changes on later reviewed windows, preserving incident boundaries and causal online updates; do not automatically suppress a new regime or learn a direction from negative feedback alone.
 
 ### Comparison discipline
 

@@ -2,6 +2,12 @@
 
 Use this when a validated configuration will run continuously. Keep small deployments simple and add operational controls only when their conditions apply. The official [installation guide](https://docs.victoriametrics.com/anomaly-detection/quickstart/#how-to-install-and-run-vmanomaly) links Docker, Docker Compose, Helm, and Operator deployment paths.
 
+## Cadence and validation evidence
+
+When the user has not specified reaction time, start with five-minute sampling and inference; use a different minute-scale cadence when the signal warrants it. Preserve explicit sub-minute requirements and existing query resolution. Explain the resulting resource cost and total alert delay, including ingestion, inference, rule evaluation and persistence. A rule's `for` duration does not establish a count of independent anomalous observations.
+
+Report validation separately: schema-valid, data-tested, deployment-rendered, and live-tested. Record the versions, window and outcome for each completed check. Unresolved URLs, tenants, credentials or license references prevent a live-tested claim. An anomaly-score fraction is not a notification budget or an accuracy guarantee.
+
 ## Stateful online operation
 
 For periodic online models, prefer one initial fit followed by causal inference updates. Protect that accumulated state across restarts:
