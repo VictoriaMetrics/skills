@@ -110,8 +110,8 @@ for each.
    `vmalert_config_last_reload_successful` in `$VM_ALERT_URL/metrics` is 1. If `-reloadAuthKey` is
    set, add `?authKey=<key>`; a header gets 401. `file` in `/api/v1/rules` shows where the loaded
    rule files are. Wait one interval, then [read the rule's state](#read-a-rules-state-now):
-   `health=ok`, empty `lastError`, and `fetched` above zero. Before its first evaluation the rule
-   shows `fetched=null`. Once it fires, check that the
+   `health=ok`, empty `lastError`, and `fetched` above zero. `fetched=null` is normal before the
+   first evaluation and for `type: vlogs` rules. Once it fires, check that the
    `dashboard` link in `/api/v1/alerts` opens the right panel.
 
 ## Check when a rule fires
@@ -255,7 +255,7 @@ Work down this list:
    param such as `extra_filters`; read the group's `params` in `/api/v1/rules`.
 2. `fetched=0` and `samples=0`: the selector matches nothing. Check the metric and label names,
    for example with `count by (__name__) ({__name__=~"queue_dep.*"})` on `$VM_METRICS_URL`.
-   `fetched=null` means the datasource does not report the count.
+   `fetched=null` means the datasource does not report the count, as VictoriaLogs never does.
 3. `samples=0` with `fetched` above zero: the series exist and the threshold is not crossed.
 4. `state=pending`: the condition is true and `for` has not elapsed yet.
 
