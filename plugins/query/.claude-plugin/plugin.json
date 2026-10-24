@@ -1,7 +1,7 @@
 {
   "name": "query",
-  "description": "Query the full VictoriaMetrics observability stack. Run PromQL/MetricsQL metric queries, search logs with LogsQL, discover distributed traces via Jaeger API, and manage AlertManager alerts and silences.",
-  "version": "1.0.0",
+  "description": "Query the full VictoriaMetrics observability stack. Run PromQL/MetricsQL metric queries, search logs with LogsQL, discover distributed traces via Jaeger API, manage AlertManager alerts and silences, and write and debug vmalert alerting and recording rules.",
+  "version": "1.1.0",
   "author": {
     "name": "VictoriaMetrics"
   },
@@ -16,6 +16,7 @@
     "metricsql",
     "logsql",
     "alertmanager",
+    "vmalert",
     "metrics",
     "logs",
     "traces",
