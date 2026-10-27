@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Assemble a local preset bundle from API artifacts and pinned dashboard inputs.
 
-JSON is emitted as YAML 1.2 for deployment files, avoiding an extra YAML runtime
-or text substitution in expressions. No network access or deployment is performed.
+JSON is emitted as YAML 1.2 for deployment files. PyYAML safely parses artifact
+YAML to check consistency without rewriting its contents. No network access or deployment is performed.
 """
 
 from __future__ import annotations
@@ -14,6 +14,8 @@ import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 MAX_INPUT_BYTES = 8 * 1024 * 1024
 
@@ -122,6 +124,13 @@ def render(
         content = artifacts.get(field)
         if not isinstance(content, str) or not content.strip():
             raise ValueError(f'Expected complete artifact YAML in {field}; regenerate the artifact pair')
+        try:
+            parsed = yaml.safe_load(content)
+        except yaml.YAMLError as exc:
+            raise ValueError(f'Invalid artifact YAML in {field}; regenerate the artifact pair') from exc
+        expected = config if field == 'config_yaml' else rules
+        if parsed != expected:
+            raise ValueError(f'Artifact YAML in {field} differs from its structured object; regenerate the artifact pair')
         files[filename] = content  # Preserve backend comments and draft instructions verbatim.
     files['anomaly-dashboard.json'] = encode(
         dashboard(

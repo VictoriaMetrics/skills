@@ -59,6 +59,20 @@ class BundleTests(unittest.TestCase):
         self.assertFalse(manifest['deployment_ready'])
         self.assertEqual(manifest['required_inputs'], self.artifacts['required_inputs'])
 
+    def test_rejects_spliced_artifact_yaml(self):
+        for field in ('config_yaml', 'alerts_yaml'):
+            with self.subTest(field=field):
+                original = self.artifacts[field]
+                self.artifacts[field] = 'different: content\n'
+                with self.assertRaisesRegex(ValueError, 'differs from its structured object'):
+                    self.render()
+                self.artifacts[field] = original
+
+    def test_rejects_unsafe_yaml_tags(self):
+        self.artifacts['config_yaml'] = '!!python/object/apply:os.system [echo unsafe]'
+        with self.assertRaisesRegex(ValueError, 'Invalid artifact YAML'):
+            self.render()
+
     def test_rejects_incomplete_artifact_pair(self):
         del self.artifacts['alerts_yaml']
         with self.assertRaisesRegex(ValueError, 'regenerate the artifact pair'):

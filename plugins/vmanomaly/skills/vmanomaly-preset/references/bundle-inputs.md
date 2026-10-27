@@ -6,7 +6,7 @@ Run from the installed skill directory:
 python3 scripts/render_bundle.py --artifacts artifacts.json --spec deployment.json --anomaly-dashboard anomaly.json --monitoring-dashboard monitoring.json --output new-bundle
 ```
 
-The output directory must not exist. The two artifact YAML files are preserved exactly as returned by the backend. Other generated `.yaml` files contain JSON, a YAML 1.2 subset; expressions are serialized, never interpolated through a shell. The helper requires no third-party Python packages and never deploys or downloads anything.
+The output directory must not exist. The two artifact YAML files are preserved exactly as returned by the backend. Other generated `.yaml` files contain JSON, a YAML 1.2 subset; expressions are serialized, never interpolated through a shell. The helper requires PyYAML (`python3 -m pip install -r scripts/requirements.txt`, from the preset skill directory) to safely parse each artifact and reject disagreement with its structured object before rendering. It never deploys or downloads anything. This consistency check does not authenticate the source or revalidate runtime semantics.
 
 Common deployment specification fields:
 
