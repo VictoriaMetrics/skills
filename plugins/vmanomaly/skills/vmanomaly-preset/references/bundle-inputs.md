@@ -6,7 +6,7 @@ Run from the installed skill directory:
 python3 scripts/render_bundle.py --artifacts artifacts.json --spec deployment.json --anomaly-dashboard anomaly.json --monitoring-dashboard monitoring.json --output new-bundle
 ```
 
-The output directory must not exist. Files with `.yaml` extensions contain JSON, a YAML 1.2 subset; expressions are serialized, never interpolated through a shell. The helper requires no third-party Python packages and never deploys or downloads anything.
+The output directory must not exist. The two artifact YAML files are preserved exactly as returned by the backend. Other generated `.yaml` files contain JSON, a YAML 1.2 subset; expressions are serialized, never interpolated through a shell. The helper requires no third-party Python packages and never deploys or downloads anything.
 
 Common deployment specification fields:
 
@@ -34,3 +34,7 @@ The initial renderers target one instance and preserve complete groups. HA, auto
 Validate Compose with `docker compose config`, Helm with lint/template against the pinned chart, and Operator resources against the pinned CRDs followed by a disposable reconciliation check. Extract and validate the resulting vmanomaly config where rendering/reconciliation transforms it. Check alert templates with vmalert, then evaluate score freshness/persistence on fixture data. Query dashboard expressions against fixture outputs and inspect datasource switching and incident links in the browser. Record pass/fail/skipped per layer; the manifest starts with pending checks and never marks a deployment live-tested automatically.
 
 An all-static plan does not use this ML bundle helper. Deliver validated static rules, dashboard context and source/license provenance separately.
+
+## Deployment references and asset provenance
+
+Use the [anomaly chart](https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-anomaly) and [Operator VMAnomaly guide](https://docs.victoriametrics.com/operator/resources/vmanomaly/) as discovery references. Resolve mutable documentation links to a chosen release before fetching deployment inputs. Helm needs compatible chart values/templates/schema as well as Chart.yaml; Operator needs the installed CRD schema. Record the release/revision and checksum, validate all required files before rendering, and use a new output directory. Missing or incompatible assets are explicit limitations, not a reason to rewrite selected parts of previously validated YAML. Updating deployment settings requires a newly validated complete artifact pair and bundle.

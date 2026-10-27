@@ -28,6 +28,8 @@ class BundleTests(unittest.TestCase):
             },
             'alert_rules': {'groups': []},
         }
+        self.artifacts['config_yaml'] = json.dumps(self.artifacts['config'])
+        self.artifacts['alerts_yaml'] = json.dumps(self.artifacts['alert_rules'])
         self.spec = {
             'name': 'demo',
             'deployment': 'compose',
@@ -45,6 +47,22 @@ class BundleTests(unittest.TestCase):
             'templating': {'list': [{'name': 'DS_VM'}, {'name': 'preset'}, {'name': 'vmanomaly_prefix'}]},
         }
         self.monitoring = {'templating': {'list': [{'name': 'DS_PROMETHEUS'}, {'name': 'preset'}]}}
+
+    def test_preserves_complete_artifact_text_and_draft_metadata(self):
+        self.artifacts['config_yaml'] = '# DRAFT: replace writer URL\n' + self.artifacts['config_yaml']
+        self.artifacts['alerts_yaml'] = '# DRAFT: verify score destination\n' + self.artifacts['alerts_yaml']
+        self.artifacts['required_inputs'] = [{'field': 'writer.datasource_url', 'instruction': 'Replace URL'}]
+        files = module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
+        self.assertEqual(files['vmanomaly.yaml'], self.artifacts['config_yaml'])
+        self.assertEqual(files['alerts.yaml'], self.artifacts['alerts_yaml'])
+        manifest = json.loads(files['manifest.json'])
+        self.assertFalse(manifest['deployment_ready'])
+        self.assertEqual(manifest['required_inputs'], self.artifacts['required_inputs'])
+
+    def test_rejects_incomplete_artifact_pair(self):
+        del self.artifacts['alerts_yaml']
+        with self.assertRaisesRegex(ValueError, 'regenerate the artifact pair'):
+            module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
 
     def render(self):
         return module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)

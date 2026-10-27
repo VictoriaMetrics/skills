@@ -1,6 +1,6 @@
-# vmanomaly v1.30 model-selection reference
+# vmanomaly model-selection reference
 
-Use this after profiling real data. Runtime `/api/v1/models` and `/api/v1/model/schema` results override static examples.
+Use this after profiling real data; consult the [public model-selection guide](https://docs.victoriametrics.com/anomaly-detection/guides/model-selection/) for worked examples and tradeoffs. Runtime `/api/v1/models` and `/api/v1/model/schema` results override static examples.
 
 ## Contents
 
@@ -21,7 +21,7 @@ Can a static rule clearly express failure?
    ├─ simple, non-seasonal profile
    │  ├─ skewed/heavy-tailed/spike-contaminated → mad_online
    │  └─ stable/light-tailed and magnitude matters → zscore_online
-   ├─ seasonal quantiles with absent/slow trend → quantile_online
+   ├─ repeatable uneven/plateau phases with negligible trend → quantile_online
    └─ cross-series relationship is the signal
       └─ temporal_envelope_multivariate
 ```
@@ -94,7 +94,9 @@ Use when the profile is stable/light-tailed and standard-deviation magnitude is 
 
 ### `quantile_online`
 
-Use for seasonal quantile behavior with absent or slow trend. It requires enough observations in each seasonal bucket and is not a general trend model.
+Favor this specialized option when profiling shows negligible trend and a repeatable uneven or plateau-shaped seasonal distribution that benefits from explicit phase buckets, particularly a custom cycle: for example `seasonal_interval: 14d` with `min_subseason: 3h` (112 buckets per series). Uneven means recurring phase shape, not irregular timestamps. Require adequate observations and repeated cycles in each bucket; one cycle alone does not demonstrate repeatability.
+
+For other non-trivial temporal profiles, prefer Temporal Envelope, including changing levels, trend and calendar effects. MAD/z-score remain appropriate for simple stationary data. Envelope may use less state and fit/infer faster than a fine-bucket seasonal quantile model, but this is a workload-dependent expectation: check sizing and representative timing before claiming savings. Do not map a 14-day cycle to weekly DOW or assume envelope supports every custom period. Respect explicit user choices and retain a quantile model when measured quality justifies it.
 
 For stable MAD, Z-score, and online-quantile distributions, use `history_strength > 1` (typically `2`–`3`) to reduce the leverage of new observations without fitting many extra historical cycles. This can reduce fit-time data, CPU, and RAM, but it does not replace coverage of every required seasonal phase and should not anchor a genuinely changing regime.
 
@@ -124,7 +126,9 @@ Isolation Forest requires periodic refitting and does not extrapolate a temporal
 
 Use the longest required history for multiple profiles. Explain when available history is shorter. Partial fit history can still be useful for online models, but cold-start/warmup remains visible.
 
-For online models, default `fit_every` to an effectively disabled cadence such as `1000w`: perform one initial fit, then improve state causally during inference. Configure periodic refits only when the user explicitly needs resets or relearning. Offline models require periodic refits, which is another reason to deprioritize them.
+For online models, prefer a deliberate long `fit_every`, such as `1000w`, when periodic rebuilding is not intended. This is not true fit-once scheduling: startup/restore and eventual refits still apply. Offline models need a suitable regular refit interval.
+
+For online MAD, z-score and quantile with long refit intervals, prefer `0 < decay < 1` when drift adaptation is intended. `decay: 1` keeps historical weight; reserve it for a deliberate cumulative baseline. Choose an adaptation horizon and check actual update semantics: z-score weights individual samples, digest-based models can decay per update batch, and seasonal buckets update only in their own phases. Do not translate decay directly from inference cadence or reuse one coefficient for every model. Faster forgetting can absorb sustained anomalies; balance it with warmup and `history_strength`. Peer models additionally constrain effective-sample warmup. Use schema-supported history/window controls for rolling and temporal-envelope models rather than adding an unsupported generic `decay`. Validate the installed model schema and preserve explicit user choices.
 
 ## Autotune guidance
 

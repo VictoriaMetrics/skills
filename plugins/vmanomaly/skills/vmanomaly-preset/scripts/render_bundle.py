@@ -117,7 +117,12 @@ def render(
     if not metric_pattern.endswith('$VAR') or fmt.get('for') != '$QUERY_KEY':
         raise ValueError('Dashboard adaptation supports metric prefixes and canonical query identity only')
     prefix = metric_pattern[:-4]
-    files = {'vmanomaly.yaml': encode(config), 'alerts.yaml': encode(rules)}
+    files = {}
+    for filename, field in [('vmanomaly.yaml', 'config_yaml'), ('alerts.yaml', 'alerts_yaml')]:
+        content = artifacts.get(field)
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError(f'Expected complete artifact YAML in {field}; regenerate the artifact pair')
+        files[filename] = content  # Preserve backend comments and draft instructions verbatim.
     files['anomaly-dashboard.json'] = encode(
         dashboard(
             anomaly,
@@ -242,6 +247,8 @@ def render(
         'deployment': target,
         'backend_validation': artifacts['validation'],
         'warnings': artifacts.get('warnings', []),
+        'deployment_ready': False,
+        'required_inputs': artifacts.get('required_inputs', []),
         'deployment_spec': spec,
         'pending_validation': pending,
         'files': {key: sha256(value.encode()) for key, value in files.items()},
