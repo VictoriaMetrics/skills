@@ -21,7 +21,7 @@ For MCP/Copilot delivery, follow the [versioned preset completion guide](referen
 
 ## Deployment and retention choices
 
-When deployment and storage choices are known, generate the complete bundle once. Only when choices are missing, generate base config/alerts first and ask for the missing Compose/Helm/Operator or persistent state/RAM preference, following the completion guide. Request deployment artifacts only through a tool schema that supports them; preserve its complete file list. Recommend explicit one-week inactive-model retention for new online presets, with the existing five-minute check interval and user overrides. Never change runtime defaults or treat TTL as a hard capacity limit.
+When deployment and storage choices are known, generate the complete bundle once. Only when choices are missing, generate base config/alerts first and ask for the missing Compose/Helm/Operator or persistent state/RAM preference, following the completion guide. Request deployment artifacts only through a tool schema that supports them; preserve its complete file list. Recommend explicit one-week inactive-model retention for new online presets, with a five-minute check interval only when below `ttl` and every scheduler’s `fit_every`; reduce it for refits at five minutes or less and preserve valid user overrides. Never change runtime defaults or treat TTL as a hard capacity limit.
 
 ## Build and validate
 
