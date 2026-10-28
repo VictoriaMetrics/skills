@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assemble a local preset bundle from API artifacts and pinned dashboard inputs.
 
-JSON is emitted as YAML 1.2 for deployment files. PyYAML safely parses artifact
+JSON is emitted as YAML 1.2 for deployment files. ruamel.yaml safely parses artifact
 YAML to check consistency without rewriting its contents. No network access or deployment is performed.
 """
 
@@ -15,9 +15,26 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-import yaml
+from ruamel.yaml import YAML
+from ruamel.yaml.constructor import SafeConstructor
+from ruamel.yaml.error import YAMLError
 
 MAX_INPUT_BYTES = 8 * 1024 * 1024
+
+
+class ArtifactConstructor(SafeConstructor):
+    """Keep date-like labels as strings: the artifact response has JSON scalar types."""
+
+
+ArtifactConstructor.add_constructor('tag:yaml.org,2002:timestamp', SafeConstructor.construct_yaml_str)
+
+
+def parse_artifact_yaml(content: str) -> Any:
+    """Use YAML 1.2 consistently, independent of optional C extensions."""
+    parser = YAML(typ='safe', pure=True)
+    parser.version = (1, 2)
+    parser.Constructor = ArtifactConstructor
+    return parser.load(content)
 
 
 def load_json(path: Path, expected_sha256: str | None = None) -> dict[str, Any]:
@@ -125,8 +142,8 @@ def render(
         if not isinstance(content, str) or not content.strip():
             raise ValueError(f'Expected complete artifact YAML in {field}; regenerate the artifact pair')
         try:
-            parsed = yaml.safe_load(content)
-        except yaml.YAMLError as exc:
+            parsed = parse_artifact_yaml(content)
+        except YAMLError as exc:
             raise ValueError(f'Invalid artifact YAML in {field}; regenerate the artifact pair') from exc
         expected = config if field == 'config_yaml' else rules
         if parsed != expected:

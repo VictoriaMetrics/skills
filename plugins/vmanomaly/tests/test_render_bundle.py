@@ -59,6 +59,26 @@ class BundleTests(unittest.TestCase):
         self.assertFalse(manifest['deployment_ready'])
         self.assertEqual(manifest['required_inputs'], self.artifacts['required_inputs'])
 
+    def test_yaml12_scalars_preserve_artifact_text(self):
+        labels = {'on': 'off', 'yes': 'no', 'date': '2026-10-28', 'time': '12:34:56'}
+        self.artifacts['alert_rules'] = {'groups': [], 'labels': labels, 'enabled': True, 'count': 12, 'ratio': 1000.0}
+        content = ('# Keep this comment\ngroups: []\nlabels: {on: off, yes: no, date: 2026-10-28, time: 12:34:56}\n'
+                   'enabled: true\ncount: 012\nratio: 1e3\n')
+        self.artifacts['alerts_yaml'] = content
+        files = module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
+        self.assertEqual(files['alerts.yaml'], content)
+
+    def test_yaml12_string_bool_mismatch_is_rejected(self):
+        self.artifacts['alert_rules'] = {'groups': [], 'label': True}
+        self.artifacts['alerts_yaml'] = 'groups: []\nlabel: on\n'
+        with self.assertRaisesRegex(ValueError, 'differs from its structured object'):
+            module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
+
+    def test_duplicate_yaml_keys_are_rejected(self):
+        self.artifacts['alerts_yaml'] = 'groups: []\ngroups: []\n'
+        with self.assertRaisesRegex(ValueError, 'Invalid artifact YAML'):
+            module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
+
     def test_rejects_spliced_artifact_yaml(self):
         for field in ('config_yaml', 'alerts_yaml'):
             with self.subTest(field=field):
