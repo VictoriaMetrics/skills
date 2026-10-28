@@ -8,7 +8,7 @@ allowed-tools: Bash(curl:*), Bash(jq:*), Bash(python3:*), Read
 
 Deliver a small, reproducible monitoring bundle. Start with the customer's authorized datasource/tenant, service scope, detection intent and deployment preference. Infer metric properties from data; ask only for business constraints or destinations that cannot be inferred. This workflow does not authorize deployment, remote dashboard updates or alert delivery.
 
-For MCP/Copilot delivery, follow the [versioned preset completion guide](references/copilot-preset-guide-v1.md), the canonical source of the compact guide distributed by MCP. It defines file-generation completion, missing-destination handling and workspace-preview boundaries.
+For MCP/Copilot delivery, follow the [versioned preset completion guide](references/copilot-preset-guide-v1.md), the canonical source of the compact guide distributed by MCP. It defines the bounded autotune and holdout quality check, file-generation completion, missing-destination handling and workspace-preview boundaries.
 
 ## Discover and choose
 
@@ -18,6 +18,10 @@ For MCP/Copilot delivery, follow the [versioned preset completion guide](referen
 4. Rank by user relevance, coverage, actionable interpretation, cost and existing alerts. Classify static, temporal, joint, peer or context-only. Keep counters as rates, normalize units, and avoid unsupported histogram assumptions. Missing metadata is unknown. Sample across entity groups rather than selecting only the first series.
 5. For chosen exact queries, follow the available vmanomaly-config workflow or perform its equivalent: characteristics, live model schema, causal candidate evaluation and full-config validation at the same step/timezone. Prefer online models; preserve complete multivariate groups and comparable peer pools. Default inference to minute-scale cadence, ordinarily 5m, unless intent requires otherwise. Choose query step separately to retain relevant events and preserve existing query resolution. Choose explicit refit cadence as described in the completion guide; periodic `fit_every` otherwise inherits inference cadence.
 6. Use existing deployment sizing for the actual topology and cardinality evidence. Sample counts are lower bounds, not exact fleet size. Keep unsupported configurations unsupported; do not substitute fewer peers, shorter history or a slower cadence to obtain a feasible estimate.
+
+## Deployment and retention choices
+
+When deployment and storage choices are known, generate the complete bundle once. Only when choices are missing, generate base config/alerts first and ask for the missing Compose/Helm/Operator or persistent state/RAM preference, following the completion guide. Request deployment artifacts only through a tool schema that supports them; preserve its complete file list. Recommend explicit one-week inactive-model retention for new online presets, with the existing five-minute check interval and user overrides. Never change runtime defaults or treat TTL as a hard capacity limit.
 
 ## Build and validate
 

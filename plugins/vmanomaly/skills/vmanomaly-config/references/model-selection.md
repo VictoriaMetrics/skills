@@ -139,3 +139,5 @@ For online MAD, z-score and quantile with long refit intervals, prefer `0 < deca
 - Optimize complexity when comparable candidates exist so simpler fitted state wins ties.
 - Apply and validate returned `result_data.data.modelConfig`.
 - Deploy `class: auto` only when refit-time retuning is explicitly desired.
+
+For new online deployments, recommend an explicit inactive-model retention policy (initially `settings.retention: {ttl: 1w, check_interval: 5m}`), preserving user choices. Adjust for churn and intermittent entities; TTL evicts stale instances and is independent of decay. Pair restoration with provisioned durable model/data storage; `restore_state: true` alone cannot provide persistence. See the preset completion guide for deployment choices.
