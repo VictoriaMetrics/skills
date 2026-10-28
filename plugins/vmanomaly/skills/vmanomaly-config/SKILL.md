@@ -110,8 +110,9 @@ Default hierarchy:
 
 1. Start with `temporal_envelope` for any non-trivial temporal profile: trend, calendar patterns, holidays, persistent shifts, forecasts, or uncertainty about whether a simple stationary baseline is sufficient.
 2. Use `mad_online` or `zscore_online` only when profiling confirms simple, non-seasonal, relatively stable data. Prefer MAD for skewed, heavy-tailed, or outlier-contaminated data; use Z-score only when the distribution is stable/light-tailed and standard-deviation magnitude is meaningful.
-3. For aligned channels where their relationship is the anomaly, start with `temporal_envelope_multivariate`.
-4. Do not introduce an offline model in the normal recommendation flow. Discuss one only when reviewing a legacy configuration, when the user explicitly requests it, or when a controlled comparison has already established a material benefit that an online model cannot provide.
+3. Favor `quantile_online` only for evidence-backed, negligible-trend uneven/plateau seasonal phases or custom cycles; see `references/model-selection.md` and the [public model-selection guide](https://docs.victoriametrics.com/anomaly-detection/guides/model-selection/). Otherwise retain the hierarchy above.
+4. For aligned channels where their relationship is the anomaly, start with `temporal_envelope_multivariate`.
+5. Do not introduce an offline model in the normal recommendation flow. Discuss one only when reviewing a legacy configuration, when the user explicitly requests it, or when a controlled comparison has already established a material benefit that an online model cannot provide.
 
 ### 6. Map domain knowledge to public controls
 
