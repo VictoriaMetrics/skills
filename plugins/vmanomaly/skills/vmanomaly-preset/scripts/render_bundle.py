@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Assemble a local preset bundle from API artifacts and pinned dashboard inputs.
 
-JSON is emitted as YAML 1.2 for deployment files, avoiding an extra YAML runtime
-or text substitution in expressions. No network access or deployment is performed.
+JSON is emitted as YAML 1.2 for deployment files. ruamel.yaml safely parses artifact
+YAML to check consistency without rewriting its contents. No network access or deployment is performed.
 """
 
 from __future__ import annotations
@@ -15,7 +15,26 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+from ruamel.yaml import YAML
+from ruamel.yaml.constructor import SafeConstructor
+from ruamel.yaml.error import YAMLError
+
 MAX_INPUT_BYTES = 8 * 1024 * 1024
+
+
+class ArtifactConstructor(SafeConstructor):
+    """Keep date-like labels as strings: the artifact response has JSON scalar types."""
+
+
+ArtifactConstructor.add_constructor('tag:yaml.org,2002:timestamp', SafeConstructor.construct_yaml_str)
+
+
+def parse_artifact_yaml(content: str) -> Any:
+    """Use YAML 1.2 consistently, independent of optional C extensions."""
+    parser = YAML(typ='safe', pure=True)
+    parser.version = (1, 2)
+    parser.Constructor = ArtifactConstructor
+    return parser.load(content)
 
 
 def load_json(path: Path, expected_sha256: str | None = None) -> dict[str, Any]:
@@ -117,7 +136,19 @@ def render(
     if not metric_pattern.endswith('$VAR') or fmt.get('for') != '$QUERY_KEY':
         raise ValueError('Dashboard adaptation supports metric prefixes and canonical query identity only')
     prefix = metric_pattern[:-4]
-    files = {'vmanomaly.yaml': encode(config), 'alerts.yaml': encode(rules)}
+    files = {}
+    for filename, field in [('vmanomaly.yaml', 'config_yaml'), ('alerts.yaml', 'alerts_yaml')]:
+        content = artifacts.get(field)
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError(f'Expected complete artifact YAML in {field}; regenerate the artifact pair')
+        try:
+            parsed = parse_artifact_yaml(content)
+        except YAMLError as exc:
+            raise ValueError(f'Invalid artifact YAML in {field}; regenerate the artifact pair') from exc
+        expected = config if field == 'config_yaml' else rules
+        if parsed != expected:
+            raise ValueError(f'Artifact YAML in {field} differs from its structured object; regenerate the artifact pair')
+        files[filename] = content  # Preserve backend comments and draft instructions verbatim.
     files['anomaly-dashboard.json'] = encode(
         dashboard(
             anomaly,
@@ -242,6 +273,8 @@ def render(
         'deployment': target,
         'backend_validation': artifacts['validation'],
         'warnings': artifacts.get('warnings', []),
+        'deployment_ready': False,
+        'required_inputs': artifacts.get('required_inputs', []),
         'deployment_spec': spec,
         'pending_validation': pending,
         'files': {key: sha256(value.encode()) for key, value in files.items()},

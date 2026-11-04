@@ -118,6 +118,7 @@ Model-fit expectations:
 - non-trivial trend/calendar/holiday/shift profile, or uncertainty about a simple stationary baseline: `temporal_envelope` is the preferred first check;
 - confirmed simple, non-seasonal, heavy-tailed or outlier-contaminated profile: `mad_online`;
 - confirmed simple, stable/light-tailed profile: `zscore_online`;
+- negligible-trend, repeatable uneven/plateau seasonal phases or custom cycles: consider `quantile_online` after checking per-bucket history; use the [public model-selection guide](https://docs.victoriametrics.com/anomaly-detection/guides/model-selection/) for examples and compare measured quality/cost before changing an existing model;
 - dependency anomaly: `temporal_envelope_multivariate`.
 
 Do not recommend an offline model as a fallback. When reviewing one, treat it as a legacy or explicitly requested choice and compare it with the corresponding online model.

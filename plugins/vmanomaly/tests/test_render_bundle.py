@@ -28,6 +28,8 @@ class BundleTests(unittest.TestCase):
             },
             'alert_rules': {'groups': []},
         }
+        self.artifacts['config_yaml'] = json.dumps(self.artifacts['config'])
+        self.artifacts['alerts_yaml'] = json.dumps(self.artifacts['alert_rules'])
         self.spec = {
             'name': 'demo',
             'deployment': 'compose',
@@ -45,6 +47,56 @@ class BundleTests(unittest.TestCase):
             'templating': {'list': [{'name': 'DS_VM'}, {'name': 'preset'}, {'name': 'vmanomaly_prefix'}]},
         }
         self.monitoring = {'templating': {'list': [{'name': 'DS_PROMETHEUS'}, {'name': 'preset'}]}}
+
+    def test_preserves_complete_artifact_text_and_draft_metadata(self):
+        self.artifacts['config_yaml'] = '# DRAFT: replace writer URL\n' + self.artifacts['config_yaml']
+        self.artifacts['alerts_yaml'] = '# DRAFT: verify score destination\n' + self.artifacts['alerts_yaml']
+        self.artifacts['required_inputs'] = [{'field': 'writer.datasource_url', 'instruction': 'Replace URL'}]
+        files = module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
+        self.assertEqual(files['vmanomaly.yaml'], self.artifacts['config_yaml'])
+        self.assertEqual(files['alerts.yaml'], self.artifacts['alerts_yaml'])
+        manifest = json.loads(files['manifest.json'])
+        self.assertFalse(manifest['deployment_ready'])
+        self.assertEqual(manifest['required_inputs'], self.artifacts['required_inputs'])
+
+    def test_yaml12_scalars_preserve_artifact_text(self):
+        labels = {'on': 'off', 'yes': 'no', 'date': '2026-10-28', 'time': '12:34:56'}
+        self.artifacts['alert_rules'] = {'groups': [], 'labels': labels, 'enabled': True, 'count': 12, 'ratio': 1000.0}
+        content = ('# Keep this comment\ngroups: []\nlabels: {on: off, yes: no, date: 2026-10-28, time: 12:34:56}\n'
+                   'enabled: true\ncount: 012\nratio: 1e3\n')
+        self.artifacts['alerts_yaml'] = content
+        files = module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
+        self.assertEqual(files['alerts.yaml'], content)
+
+    def test_yaml12_string_bool_mismatch_is_rejected(self):
+        self.artifacts['alert_rules'] = {'groups': [], 'label': True}
+        self.artifacts['alerts_yaml'] = 'groups: []\nlabel: on\n'
+        with self.assertRaisesRegex(ValueError, 'differs from its structured object'):
+            module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
+
+    def test_duplicate_yaml_keys_are_rejected(self):
+        self.artifacts['alerts_yaml'] = 'groups: []\ngroups: []\n'
+        with self.assertRaisesRegex(ValueError, 'Invalid artifact YAML'):
+            module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
+
+    def test_rejects_spliced_artifact_yaml(self):
+        for field in ('config_yaml', 'alerts_yaml'):
+            with self.subTest(field=field):
+                original = self.artifacts[field]
+                self.artifacts[field] = 'different: content\n'
+                with self.assertRaisesRegex(ValueError, 'differs from its structured object'):
+                    self.render()
+                self.artifacts[field] = original
+
+    def test_rejects_unsafe_yaml_tags(self):
+        self.artifacts['config_yaml'] = '!!python/object/apply:os.system [echo unsafe]'
+        with self.assertRaisesRegex(ValueError, 'Invalid artifact YAML'):
+            self.render()
+
+    def test_rejects_incomplete_artifact_pair(self):
+        del self.artifacts['alerts_yaml']
+        with self.assertRaisesRegex(ValueError, 'regenerate the artifact pair'):
+            module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
 
     def render(self):
         return module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
