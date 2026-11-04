@@ -6,7 +6,7 @@ Discover, evaluate, size and generate matching files or report blockers. Workspa
 
 Preserve authorized datasource/tenant/scope and preferences, including explicit multitenant routes. Never enumerate tenants or broaden scope. Inspect live schemas; unsupported capabilities are not empty data. Do not alter cadence/history/topology/workload to make sizing succeed.
 
-Per initial preset request: at most 10 metadata calls (100 items each, initially one day), five profiling calls including retries, two sequential autotune studies and ten status calls per task. Profile with explicit `limit: 5`, `verbose: false` and fixed start/end/step; bound points by window/step too. Reuse evidence, report sampling and stop on overload/timeouts rather than automatically retrying. Copilot may enforce these budgets; elsewhere they are instructions, not TSDB scan-cost guarantees. Preserve room for file generation and disclose incomplete analysis.
+Per initial preset request: at most 10 metadata calls (100 items each, initially one day), five profiling calls including retries, two sequential autotune studies, two comparison runs (five series each) and ten status calls per task, counting failed attempts. Profile with explicit `limit: 5`, `verbose: false` and fixed start/end/step; bound points by window/step too. Reuse evidence, report sampling and stop on overload/timeouts rather than automatically retrying. Copilot may enforce these budgets; elsewhere they are instructions, not TSDB scan-cost guarantees. Preserve room for file generation and disclose incomplete analysis.
 
 ## Discover and select
 
@@ -23,7 +23,7 @@ Prefer online MAD/z-score for simple stationary signals and Temporal Envelope fo
 
 Inspect training/evaluation coverage, gaps and level changes. Explain window changes; never bridge long gaps or discard incidents to improve scores. Digest decay advances on updates, not elapsed missing time.
 
-Before artifact generation, run bounded autotune and the comparison below unless declined, already evaluated or unsupported. “Lightweight” means bounded work, not permission to skip tuning. If checks fail or budgets expire, generate drafts with quality explicitly unverified; disclose skips and untuned groups. Use a provisional `anomaly_percentage: 0.02` (2% anomalous points), not a false-positive guarantee or quota. Preserve query policies. For online models: `limit: 5`, `optimization_params: {n_trials: 32, timeout: 8, exact: true, n_jobs: 1}`; at most two sequential studies.
+Before artifact generation, run bounded autotune and the comparison below unless declined, already evaluated or unsupported. “Lightweight” means bounded work, not permission to skip tuning. If checks fail, budgets expire or tuning is declined/unsupported, generate drafts with quality explicitly unverified; disclose skips and untuned groups. Use a provisional `anomaly_percentage: 0.02` (2% anomalous points), not a false-positive guarantee or quota. Preserve query policies. For online models: `limit: 5`, `optimization_params: {n_trials: 32, timeout: 8, exact: true, n_jobs: 1}`; at most two sequential studies.
 
 Prefer supported `replay` with production `fit_window`, `fit_every`, `infer_every`, fixed start/end and sampling step; verify returned replay metadata. Replay overrides fold settings and requires preceding training history. Otherwise use regular folds and disclose cadence mismatch. Never bypass missing history with leaky one-fold in-sample scoring.
 
