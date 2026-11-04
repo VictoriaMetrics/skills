@@ -7,6 +7,7 @@ Use this after profiling real data; consult the [public model-selection guide](h
 - [Decision tree](#decision-tree)
 - [Temporal Envelope](#temporal-envelope)
 - [Simple online models](#simple-online-models)
+- [Peer populations](#peer-populations)
 - [Legacy offline models](#legacy-offline-models)
 - [Fit-window and cadence guidance](#fit-window-and-cadence-guidance)
 - [Autotune guidance](#autotune-guidance)
@@ -22,6 +23,7 @@ Can a static rule clearly express failure?
    │  ├─ skewed/heavy-tailed/spike-contaminated → mad_online
    │  └─ stable/light-tailed and magnitude matters → zscore_online
    ├─ repeatable uneven/plateau phases with negligible trend → quantile_online
+   ├─ comparable entities diverging from their peers → peer_outlier (v1.31.0+, experimental)
    └─ cross-series relationship is the signal
       └─ temporal_envelope_multivariate
 ```
@@ -46,7 +48,7 @@ Starting public controls:
 | `changepoint_window` | `16` | same-direction samples before persistent-shift adaptation |
 | `seasonalities` | HOD/DOW smooth | remove unsupported profiles; `[]` is valid |
 | `holidays` | `{}` | country/special-event effects; shape learned internally |
-| `forecast_at` | `[]` | keep empty for current-state detection; add only for future-state or capacity-planning needs |
+| `forecast_at` | `[]` | keep empty for current-state detection; add only for future-state forecasting of monitored metrics, not sizing vmanomaly resources |
 
 Calendar presets:
 
@@ -99,6 +101,12 @@ Favor this specialized option when profiling shows negligible trend and a repeat
 For other non-trivial temporal profiles, prefer Temporal Envelope, including changing levels, trend and calendar effects. MAD/z-score remain appropriate for simple stationary data. Envelope may use less state and fit/infer faster than a fine-bucket seasonal quantile model, but this is a workload-dependent expectation: check sizing and representative timing before claiming savings. Do not map a 14-day cycle to weekly DOW or assume envelope supports every custom period. Respect explicit user choices and retain a quantile model when measured quality justifies it.
 
 For stable MAD, Z-score, and online-quantile distributions, use `history_strength > 1` (typically `2`–`3`) to reduce the leverage of new observations without fitting many extra historical cycles. This can reduce fit-time data, CPU, and RAM, but it does not replace coverage of every required seasonal phase and should not anchor a genuinely changing regime.
+
+## Peer populations
+
+On v1.31.0+ servers exposing `peer_outlier`, use it for comparable replicas, hosts or load balancers whose unusual members matter. Queries form independent populations; `groupby` subdivides each query by shared labels. Keep identity labels such as `instance` in query results but out of `groupby`. Require enough aligned reporting peers for `min_peer_count` (default 5) and a strict-majority normal population. It produces per-peer scores, not a multivariate joint score; use a temporal model alongside it for coordinated shifts affecting everyone.
+
+Shared tuning and `auto` support this model. Freeze grouping through `frozen_params.groupby` (nested inside `optimization_params` for `auto`); do not tune individual peers as unrelated univariate series. Prefer shared tuning for a concrete deployable configuration. Keep `optimized_business_params: []` and explicit business policies on named queries. For resource estimates, use [vmanomaly-sizing](../../vmanomaly-sizing/SKILL.md): a tuned model's fit/inference estimate does not include optimization-search costs.
 
 ## Legacy offline models
 
