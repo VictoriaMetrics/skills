@@ -23,13 +23,13 @@ Prefer online MAD/z-score for simple stationary signals and Temporal Envelope fo
 
 Inspect training/evaluation coverage, gaps and level changes. Explain window changes; never bridge long gaps or discard incidents to improve scores. Digest decay advances on updates, not elapsed missing time.
 
-Run bounded autotune unless declined, already evaluated or unsupported; disclose skips and untuned groups. Use a provisional `anomaly_percentage: 0.02` (2% anomalous points), not a false-positive guarantee or quota. Preserve query policies. For online models: `limit: 5`, `optimization_params: {n_trials: 32, timeout: 8, exact: true, n_jobs: 1}`; at most two sequential studies.
+Before artifact generation, run bounded autotune and the comparison below unless declined, already evaluated or unsupported. “Lightweight” means bounded work, not permission to skip tuning. If checks fail or budgets expire, generate drafts with quality explicitly unverified; disclose skips and untuned groups. Use a provisional `anomaly_percentage: 0.02` (2% anomalous points), not a false-positive guarantee or quota. Preserve query policies. For online models: `limit: 5`, `optimization_params: {n_trials: 32, timeout: 8, exact: true, n_jobs: 1}`; at most two sequential studies.
 
 Prefer supported `replay` with production `fit_window`, `fit_every`, `infer_every`, fixed start/end and sampling step; verify returned replay metadata. Replay overrides fold settings and requires preceding training history. Otherwise use regular folds and disclose cadence mismatch. Never bypass missing history with leaky one-fold in-sample scoring.
 
 Create via `vmanomaly_create_autotune_task`; retrieve status sequentially with `vmanomaly_get_autotune_task`, preferring supported `wait_seconds: 10`, otherwise waiting 2–5s. Stop after ten polls, retain task IDs, and never recreate running/failed tasks or use unfinished results.
 
-Compare tuned and untuned candidates on later observations excluded from tuning, using replay or separate detection tasks (`exact` alone does not reproduce schedules). Check baseline, per-series/aggregate anomaly fractions and streaks; keep joint/peer groups intact. Revisit history/model choice before widening thresholds; do not conceal sustained changes to meet a target. Prefer simpler candidates when tuning adds no benefit. Carry selected parameters into the bundle and disclose unverified quality.
+Use each task’s declared model and live schema. Compare tuned and untuned candidates on later observations excluded from tuning, using replay or separate detection tasks (`exact` alone does not reproduce schedules). Check baseline, per-series/aggregate anomaly fractions and streaks; keep joint/peer groups intact. Revisit history/model choice before widening thresholds; do not conceal sustained changes to meet a target. Prefer simpler candidates when tuning adds no benefit. Carry selected parameters into the bundle and disclose unverified quality.
 
 ## Size and configure
 
