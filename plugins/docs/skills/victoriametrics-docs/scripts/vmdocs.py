@@ -221,12 +221,14 @@ def page_hits(term, pattern, url, sections, context):
     for n, (anchor, line) in enumerate(sections):
         if not pattern.search(line):
             continue
-        start = max(0, n - context)
-        quote = "\n".join(t for _, t in sections[start:n + context + 1])
+        definition = is_definition(term, anchor, line)
+        # In a flag list the line above a flag describes the previous flag.
+        before = 0 if definition and term.startswith("-") else context
+        quote = "\n".join(t for a, t in sections[max(0, n - before):n + context + 1] if a == anchor)
         cite = url + "#" + anchor if anchor else url
         if term.startswith("/") and matched_path(term, line) != term:
             cite += "\nmatched in " + matched_path(term, line)
-        yield is_definition(term, anchor, line), cite, quote
+        yield definition, cite, quote
 
 
 def find(term, pages, context=1, skip=()):

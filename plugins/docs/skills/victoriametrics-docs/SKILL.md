@@ -91,14 +91,15 @@ cannot prove the term is absent. The script lists the pages that failed.
 
 ## Reading the output
 
-A hit is a link to the section, then the first matching line in it with one line on each side.
-When the section has more matching lines, a count follows the quote. Cite the link, quote the
-lines (long lines shortened here):
+A hit is a link to the section, then one matching line in it with one line on each side: the
+definition when the section has one, otherwise the first match. A flag definition starts at the
+flag line, because the line above it describes the previous flag. When the section has more
+matching lines, a count follows the quote. Cite the link, quote the lines (long lines shortened
+here):
 
 ```
 $ vmdocs.py find "-retentionPeriod" victorialogs
 https://docs.victoriametrics.com/victorialogs/#common-flags
-The maximum allowed disk usage percentage (1-100) for the filesystem that contains ...
 -retentionPeriod value
 Log entries with timestamps older than now-retentionPeriod are automatically deleted; ...
 ```
