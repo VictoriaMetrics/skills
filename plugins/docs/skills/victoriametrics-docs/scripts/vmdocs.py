@@ -3,7 +3,9 @@
 
 Commands:
   topics                  list the documentation sections a lookup can be limited to
-  find TERM [TOPIC]       print the lines that contain the term, with section links
+  find TERM [TOPIC] [--limit N]
+                          print the lines that contain the term, one per section,
+                          with section links; N sections at most (default 3)
 
 Pages come from https://docs.victoriametrics.com/llms.txt and the sitemap.
 
@@ -18,6 +20,7 @@ proven.
 
 import concurrent.futures
 import difflib
+import functools
 import hashlib
 import html
 import http.client
@@ -130,6 +133,11 @@ def to_text(page):
     return sections
 
 
+@functools.lru_cache(maxsize=None)
+def page_text(url):
+    return to_text(fetch(url))
+
+
 def llms_entries(text):
     return [m.groups() for m in map(ENTRY_RE.match, text.splitlines()) if m]
 
@@ -213,16 +221,19 @@ def page_hits(term, pattern, url, sections, context):
     for n, (anchor, line) in enumerate(sections):
         if not pattern.search(line):
             continue
-        start = max(0, n - context)
-        quote = "\n".join(t for _, t in sections[start:n + context + 1])
+        definition = is_definition(term, anchor, line)
+        # In a flag list the line above a flag describes the previous flag.
+        before = 0 if definition and term.startswith("-") else context
+        quote = "\n".join(t for a, t in sections[max(0, n - before):n + context + 1] if a == anchor)
         cite = url + "#" + anchor if anchor else url
         if term.startswith("/") and matched_path(term, line) != term:
             cite += "\nmatched in " + matched_path(term, line)
-        yield is_definition(term, anchor, line), cite, quote
+        yield definition, cite, quote
 
 
-def find(term, pages, context=1, cap=HITS_SHOWN, skip=()):
-    # Pages are read to the end: a flag list is often below the first mentions.
+def find(term, pages, context=1, skip=()):
+    """Every section that contains the term, definitions first, as
+    (is_definition, cite, first quote, matching lines) tuples."""
     pattern = term_pattern(term)
     definitions, mentions, failed = [], [], []
     for _, url, _ in pages:
@@ -230,18 +241,25 @@ def find(term, pages, context=1, cap=HITS_SHOWN, skip=()):
             failed.append((url, skip[url]))
             continue
         try:
-            sections = to_text(fetch(url))
+            sections = page_text(url)
         except FETCH_ERRORS as e:
             failed.append((url, reason(e)))
             continue
         for hit in page_hits(term, pattern, url, sections, context):
-            if hit[0]:
-                definitions.append(hit)
-            elif len(mentions) < cap:
-                mentions.append(hit)
-        if definitions and len(definitions) + len(mentions) >= cap:
-            break
-    return (definitions + mentions)[:cap], failed
+            (definitions if hit[0] else mentions).append(hit)
+    return by_section(definitions + mentions), failed
+
+
+def by_section(hits):
+    # One quote per section, so one long section cannot fill the output and hide other pages.
+    groups = {}
+    for is_def, cite, quote in hits:
+        link = cite.split("\n", 1)[0]
+        if link in groups:
+            groups[link][3] += 1
+        else:
+            groups[link] = [is_def, cite, quote, 1]
+    return [tuple(g) for g in groups.values()]
 
 
 def reason(error):
@@ -264,7 +282,7 @@ def documented_terms(term, pages):
     terms = set()
     for _, url, _ in pages:
         try:
-            sections = to_text(fetch(url))
+            sections = page_text(url)
         except FETCH_ERRORS:
             continue
         for _, line in sections:
@@ -288,17 +306,25 @@ def suggest(term, pages, limit=SUGGESTIONS):
     ranked = sorted(extend, key=len) + [t for _, t in sorted(similar)]
     found = []
     for t in ranked[:limit]:
-        hits, _ = find(t, pages, cap=1)
+        hits, _ = find(t, pages)
         if hits:
             found.append((t, hits[0][1]))
     return found
 
 
-def report_hits(hits):
-    for _, cite, quote in hits[:HITS_SHOWN]:
+def report_hits(hits, limit, topic=None):
+    for _, cite, quote, lines in hits[:limit]:
         print(cite)
         print(quote)
+        if lines > 1:
+            print("(%d more matching lines in this section)" % (lines - 1))
         print()
+    if len(hits) > limit:
+        pages = {cite.split("#")[0].split("\n")[0] for _, cite, _, _ in hits}
+        print("Showing %d of %d sections (%d matching lines on %d pages)."
+              % (limit, len(hits), sum(h[3] for h in hits), len(pages)))
+        print("The term is also in the sections not shown. Run again with --limit N to see them%s."
+              % ("" if topic else ", or with a topic to search one product"))
     return 0
 
 
@@ -351,7 +377,7 @@ def cmd_topics():
     return 0
 
 
-def cmd_find(term, topic):
+def cmd_find(term, topic, limit):
     entries, complete = load_index()
     if topic:
         names = [name for name, _ in topics(entries)]
@@ -360,7 +386,7 @@ def cmd_find(term, topic):
         entries = roots_first(section_pages(entries, topic))
     hits, failed = find(term, entries, skip=prefetch(entries))
     if hits:
-        return report_hits(hits)
+        return report_hits(hits, limit, topic)
     if failed:
         return report_unfetched(failed, len(entries))
     if not complete:
@@ -370,15 +396,34 @@ def cmd_find(term, topic):
     return report_not_found(term, where, len(entries), close)
 
 
+def take_limit(args):
+    """Removes --limit N from args; returns N, the default, or None if N is invalid."""
+    if "--limit" not in args:
+        return HITS_SHOWN
+    i = args.index("--limit")
+    value = args[i + 1] if i + 1 < len(args) else ""
+    del args[i:i + 2]
+    try:
+        limit = int(value)
+    except ValueError:
+        return None
+    return limit if limit > 0 else None
+
+
 def dispatch(argv):
-    if argv[1:] == ["topics"]:
+    args = argv[1:]
+    limit = take_limit(args)
+    if limit is None:
+        print("--limit needs a positive whole number")
+        return 2
+    if args == ["topics"]:
         return cmd_topics()
-    if len(argv) < 3:
+    if len(args) < 2:
         print(__doc__)
         return 2
-    command, term = argv[1], argv[2]
+    command, term = args[0], args[1]
     if command == "find":
-        return cmd_find(term, argv[3] if len(argv) > 3 else None)
+        return cmd_find(term, args[2] if len(args) > 2 else None, limit)
     print("unknown command: %s" % command)
     return 2
 
