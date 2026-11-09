@@ -75,8 +75,8 @@ def cache_dir():
     try:
         os.makedirs(CACHE_DIR, mode=0o700, exist_ok=True)
         info = os.lstat(CACHE_DIR)
-    except OSError as e:
-        raise CacheError("cannot use %s (%s); remove it and run again" % (CACHE_DIR, e.strerror or reason(e)))
+    except OSError:
+        return None
     # Another user could create it first and plant fake pages.
     if not stat.S_ISDIR(info.st_mode) or (hasattr(os, "getuid") and info.st_uid != os.getuid()):
         raise CacheError("%s is not a directory you own; remove it and run again" % CACHE_DIR)
@@ -89,7 +89,7 @@ def read_cache(path):
             return None
         with open(path, encoding="utf-8") as f:
             return f.read()
-    except OSError:
+    except (OSError, UnicodeError):
         return None
 
 
@@ -114,7 +114,10 @@ def download(url):
 
 
 def fetch(url):
-    path = os.path.join(cache_dir(), hashlib.sha1(url.encode()).hexdigest())
+    directory = cache_dir()
+    if directory is None:
+        return download(url)
+    path = os.path.join(directory, hashlib.sha1(url.encode()).hexdigest())
     body = read_cache(path)
     if body is None:
         body = download(url)
@@ -248,7 +251,7 @@ def page_hits(term, pattern, url, sections, context):
         quote = "\n".join(t for a, t in sections[max(0, n - before):n + context + 1] if a == anchor)
         cite = url + "#" + anchor if anchor else url
         if term.startswith("/") and matched_path(term, line) != term:
-            cite += "\nmatched in " + matched_path(term, line)
+            quote = "matched in " + matched_path(term, line) + "\n" + quote
         yield definition, cite, quote
 
 
@@ -275,8 +278,7 @@ def by_section(hits):
     # Grouped by section, so one long section cannot fill the output and hide other pages.
     groups = {}
     for is_def, cite, quote in hits:
-        link = cite.split("\n", 1)[0]
-        _, _, quotes = groups.setdefault(link, (is_def, cite, []))
+        _, _, quotes = groups.setdefault(cite, (is_def, cite, []))
         quotes.append(quote)
     return list(groups.values())
 
@@ -348,7 +350,7 @@ def report_hits(hits, term, topic, max_sections, max_per_section):
                   % (hidden, noun, find_command(term, topic, max_sections, len(quotes))))
         print()
     if len(hits) > max_sections:
-        pages = {cite.split("#")[0].split("\n")[0] for _, cite, _ in hits}
+        pages = {cite.split("#")[0] for _, cite, _ in hits}
         print("Showing %d of %d sections (%d matching lines on %d pages)."
               % (max_sections, len(hits), sum(len(quotes) for _, _, quotes in hits), len(pages)))
         print("The term is also in the sections not shown%s. To see them, run: %s"
@@ -447,7 +449,7 @@ def parse_options(args):
 
 def positive_int(name, value):
     try:
-        number = int(value)
+        number = int(value) if value.isascii() and value.isdigit() else 0
     except ValueError:  # also raised for a number too long to convert
         number = 0
     if number < 1:
