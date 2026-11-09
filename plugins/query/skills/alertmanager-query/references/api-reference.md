@@ -309,7 +309,7 @@ AlertManager runs as an in-cluster pod. It may be unavailable due to:
 - `$VM_METRICS_URL` serves both paths only when VictoriaMetrics runs with `-vmalert.proxyURL`. Without that flag it answers with empty lists
 - Silences and inhibition state have no fallback — they are AlertManager-only features
 
-**Connectivity check:** 200 means up, 000 unreachable, 401 or 403 an auth problem.
+**Connectivity check:** 200 means up, 401 or 403 an auth problem, and 000 no HTTP response (host down, DNS, TLS or timeout).
 
 ```bash
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s -o /dev/null -w "%{http_code}\n" \

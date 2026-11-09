@@ -160,7 +160,7 @@ All timestamps use RFC3339 format: `2026-03-07T00:00:00Z`
 ## Common Patterns
 
 ```bash
-# Quick connectivity check: 200 = up, 000 = unreachable, 401 or 403 = auth problem
+# Quick connectivity check: 200 = up, 401 or 403 = auth problem, 000 = no HTTP response (host down, DNS, TLS or timeout)
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s -o /dev/null -w "%{http_code}\n" \
   "$VM_ALERTMANAGER_URL/api/v2/alerts"
 
