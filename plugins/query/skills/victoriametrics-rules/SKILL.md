@@ -129,13 +129,13 @@ for each.
    vmalert-tool unittest --files=rules_test.yml
    ```
 
-3. **Replay** it on real data to see whether it would have fired in a past incident. Start a
-   scratch VictoriaMetrics and point `-remoteWrite.url` at it, never at production or
-   `$VM_METRICS_URL`. Pass the same `-datasource.*` auth flags and `-external.label` as the
-   running vmalert; `$VM_ALERT_URL/flags` lists them:
+3. **Replay** it on real data to see whether it would have fired in a past incident. Ask the
+   user for a scratch VictoriaMetrics, such as one they start with
+   `docker run --rm -p 18428:8428 victoriametrics/victoria-metrics`. Point `-remoteWrite.url` at
+   it, never at production or `$VM_METRICS_URL`. Pass the same `-datasource.*` auth flags and
+   `-external.label` as the running vmalert; `$VM_ALERT_URL/flags` lists them:
 
    ```bash
-   docker run -d --rm -p 18428:8428 victoriametrics/victoria-metrics
    vmalert -rule=rules.yml \
      -datasource.url="$VM_METRICS_URL" \
      -remoteWrite.url=http://localhost:18428 \
