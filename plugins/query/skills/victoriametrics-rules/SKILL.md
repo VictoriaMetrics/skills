@@ -131,8 +131,8 @@ for each.
 
 3. **Replay** it on real data to see whether it would have fired in a past incident. Ask the
    user for a scratch VictoriaMetrics, such as one they start with
-   `docker run --rm -p 18428:8428 victoriametrics/victoria-metrics`. Point `-remoteWrite.url` at
-   it, never at production or `$VM_METRICS_URL`. Pass the same `-datasource.*` auth flags and
+   `docker run -d --rm -p 18428:8428 victoriametrics/victoria-metrics`. Point `-remoteWrite.url`
+   at it, never at production or `$VM_METRICS_URL`. Pass the same `-datasource.*` auth flags and
    `-external.label` as the running vmalert; `$VM_ALERT_URL/flags` lists them:
 
    ```bash
@@ -147,7 +147,7 @@ for each.
    scratch URL in place of `$VM_METRICS_URL`. New series take a few seconds to
    become searchable, so an empty answer right after replay is not a miss: query again. Replay
    sends no notifications. It ignores `keep_firing_for` and the group `limit`, disables the
-   `query` template function, and does not run `type: graphite` rules. It runs one range query
+   `query` template function, and does not run `type: graphite` rules. It sends range queries
    with `step` set to the group interval and no `eval_delay`, on the data as stored now, so it
    can differ from what vmalert saw live.
 
@@ -163,10 +163,12 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sS --fail-with-body "$VM_ALERT_
   | jq -Rr 'select(startswith("-remoteWrite.url") or startswith("-rule.evalDelay"))'
 ```
 
-`/flags` lists only the flags set on the command line and hides URLs as `"secret"`. No
-`-remoteWrite.url` line means vmalert kept no record: say that `-remoteWrite.url` stores the alert
-state, and skip to step 3. The series usually land in `$VM_METRICS_URL`; if step 2 returns nothing
-for an alert the user saw fire, ask where `-remoteWrite.url` points.
+`/flags` lists only the flags set on the command line and hides URLs as `"secret"`. If vmalert
+runs with `-flagsAuthKey`, add `?authKey=<key>`: without it `/flags` answers 401 and the filter
+above prints nothing. No `-remoteWrite.url` line means vmalert kept no record: say that
+`-remoteWrite.url` stores the alert state, and skip to step 3. The series usually land in
+`$VM_METRICS_URL`; if step 2 returns nothing for an alert the user saw fire, ask where
+`-remoteWrite.url` points.
 
 ### 2. Read what vmalert decided
 
