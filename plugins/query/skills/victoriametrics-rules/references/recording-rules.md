@@ -37,12 +37,10 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sS --fail-with-body "$VM_ALERT_
 no data in `$VM_METRICS_URL` means vmalert writes to a different place than you query: ask where
 `-remoteWrite.url` points.
 
-Three things that differ from alerting rules:
+Two things that differ from alerting rules:
 
 - vmalert refuses to start when the config holds any recording rule and `-remoteWrite.url` is
   unset, with `config contains recording rules but -remoteWrite.url isn't set`. There is nowhere
   to put the output otherwise.
-- `would_fire.py` does not apply. It needs a comparison in the expression to find the points
-  where a condition held, and a recording rule has none.
 - It writes no `ALERTS`, so "Debug a past alert" in SKILL.md does not apply. Query the output
   metric over the window instead.

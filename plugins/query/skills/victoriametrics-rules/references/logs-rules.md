@@ -24,10 +24,10 @@ Without `by (app)` there is no `app` label. An
 annotation written as `{{ $labels.errorCount }}` renders empty, and nothing reports the mistake.
 Use `{{ $labels.stats_result }}` if you want the alias name itself.
 
-Write the expression without a `_time:` filter. vmalert supplies the time range from the group
-interval when the query carries no time filter of its own. Add `_time:5m` and it stops, and a
-range query then fails with `range query is not supported for LogsQL expression ... because it
-contains time filter`.
+Leave the `_time:` filter out unless the rule needs a window other than the group interval.
+Without one, vmalert queries the last group interval. A rule with its own `_time:` filter works,
+but replay and range queries reject it with `range query is not supported for LogsQL expression
+... because it contains time filter`.
 
 When checking the expression yourself, send `start` and `end` as well as `time`, scoped to the
 group interval, exactly as vmalert does. Without them the query counts every row in storage
@@ -46,25 +46,17 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sS --fail-with-body \
 writes its `ALERTS` to the `-remoteWrite.url` target, such as VictoriaMetrics, so query them on
 `$VM_METRICS_URL`, never on `$VM_LOGS_URL`.
 
-`would_fire.py` does not apply, because it queries the Prometheus API. For a past window, run the
-rule's expression through `stats_query_range` with `step` set to the group interval, and a
-`start` on a multiple of it. This example is a group with `interval: 30s`:
+To check a `vlogs` rule on past logs, replay it as in "Check a rule" in SKILL.md, with
+VictoriaLogs as the datasource. Unless the group sets `type: vlogs`, pass
+`-rule.defaultRuleType=vlogs` to `-dryRun` too:
 
 ```bash
-curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sS --fail-with-body \
-  --data-urlencode 'query=level:error | stats by (app) count() as errorCount | filter errorCount:>2' \
-  --data-urlencode 'start=2026-09-30T18:06:00Z' \
-  --data-urlencode 'end=2026-09-30T18:11:00Z' \
-  --data-urlencode 'step=30s' \
-  "$VM_LOGS_URL/select/logsql/stats_query_range" \
-  | jq -r '.data.result[] | "\(.metric | del(.__name__) | tostring)\t\([.values[] | "\(.[0] | todate[11:19])=\(.[1])"] | join(" "))"'
+vmalert -rule=rules.yml \
+  -datasource.url="$VM_LOGS_URL" \
+  -rule.defaultRuleType=vlogs \
+  -remoteWrite.url=http://localhost:18428 \
+  -replay.timeFrom=2026-09-30T18:00:00Z -replay.timeTo=2026-09-30T19:00:00Z \
+  -replay.disableProgressBar
 ```
 
-```
-{"app":"api"}	18:07:30=15 18:08:00=15 18:08:30=15 18:09:00=15
-```
-
-A value at `t` counts the logs in `[t, t+step)`, which is what vmalert's evaluation at
-`t + interval` counts. Add one interval before you compare with `ALERTS`: this rule fired at
-18:08:00, 18:08:30, 18:09:00 and 18:09:30. Apply `for` by hand: firing needs `for` / `interval` + 1
-values in a row.
+`vmalert-tool unittest` takes only metric series as input, so it cannot test a `vlogs` rule.
