@@ -67,12 +67,19 @@ SUGGEST_CUTOFF = 0.8
 DEADLINE = time.monotonic() + TIME_BUDGET_SECONDS
 
 
+class CacheError(Exception):
+    """The local page cache cannot be used. Not an OSError, so it is not reported as a fetch error."""
+
+
 def cache_dir():
+    try:
+        os.makedirs(CACHE_DIR, mode=0o700, exist_ok=True)
+        info = os.lstat(CACHE_DIR)
+    except OSError as e:
+        raise CacheError("cannot use %s (%s); remove it and run again" % (CACHE_DIR, e.strerror or reason(e)))
     # Another user could create it first and plant fake pages.
-    os.makedirs(CACHE_DIR, mode=0o700, exist_ok=True)
-    info = os.lstat(CACHE_DIR)
     if not stat.S_ISDIR(info.st_mode) or (hasattr(os, "getuid") and info.st_uid != os.getuid()):
-        raise PermissionError("%s is not a directory you own; remove it and run again" % CACHE_DIR)
+        raise CacheError("%s is not a directory you own; remove it and run again" % CACHE_DIR)
     return CACHE_DIR
 
 
@@ -86,9 +93,13 @@ def read_cache(path):
 def write_cache(path, body):
     # Atomic, so an interrupted write never leaves a truncated page in the cache.
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path))
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(body)
-    os.replace(tmp, path)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(body)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
 
 
 def download(url):
@@ -451,6 +462,8 @@ def dispatch(argv):
         return 0
     if args == ["topics"]:
         return cmd_topics()
+    if args[:1] == ["topics"]:
+        return usage_error("topics takes no arguments")
     if not args:
         return usage_error("missing command")
     if args[0] != "find":
@@ -461,6 +474,8 @@ def dispatch(argv):
         return usage_error(str(e))
     if len(operands) not in (1, 2):
         return usage_error("find needs a term and at most one topic; options go before --")
+    if not operands[0].strip():
+        return usage_error("the term is empty, so it would match every page")
     topic = operands[1] if len(operands) == 2 else None
     return cmd_find(operands[0], topic, options["--sections"], options["--per-section"])
 
@@ -468,6 +483,10 @@ def dispatch(argv):
 def main(argv):
     try:
         return dispatch(argv)
+    except CacheError as e:
+        print("UNKNOWN: %s" % e)
+        print("Nothing was searched. Do not report the term as undocumented.")
+        return 3
     except FETCH_ERRORS as e:
         return report_no_index(e)
 
