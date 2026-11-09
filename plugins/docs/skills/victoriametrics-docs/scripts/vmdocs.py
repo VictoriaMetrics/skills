@@ -84,10 +84,13 @@ def cache_dir():
 
 
 def read_cache(path):
-    if not os.path.exists(path) or time.time() - os.path.getmtime(path) >= CACHE_MAX_AGE:
+    try:
+        if time.time() - os.path.getmtime(path) >= CACHE_MAX_AGE:
+            return None
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
         return None
-    with open(path, encoding="utf-8") as f:
-        return f.read()
 
 
 def write_cache(path, body):
@@ -115,7 +118,10 @@ def fetch(url):
     body = read_cache(path)
     if body is None:
         body = download(url)
-        write_cache(path, body)
+        try:
+            write_cache(path, body)
+        except OSError:
+            pass  # The cache only saves time; the page is already in hand.
     return body
 
 
