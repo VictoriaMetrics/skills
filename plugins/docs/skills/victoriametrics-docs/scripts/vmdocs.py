@@ -3,9 +3,11 @@
 
 Commands:
   topics                  list the documentation sections a lookup can be limited to
-  find TERM [TOPIC] [--limit N]
-                          print the lines that contain the term, one per section,
-                          with section links; N sections at most (default 3)
+  find [--sections N] [--per-section N] -- TERM [TOPIC]
+  find TERM [TOPIC]       print the lines that contain the term under links to their
+                          sections: N sections at most (default 3), N lines in each
+                          (default 1). Options go before "--"; without "--" there are
+                          none, so a term like "-retentionPeriod" needs no escaping.
 
 Pages come from https://docs.victoriametrics.com/llms.txt and the sitemap.
 
@@ -26,6 +28,7 @@ import html
 import http.client
 import os
 import re
+import shlex
 import stat
 import sys
 import tempfile
@@ -42,7 +45,8 @@ FETCH_WORKERS = 8
 # An agent's shell call is killed at 120 s; answer UNKNOWN before that.
 TIME_BUDGET_SECONDS = 90
 PAGE_TIMEOUT_SECONDS = 15
-HITS_SHOWN = 3
+SECTIONS_SHOWN = 3
+QUOTES_PER_SECTION = 1
 SUGGESTIONS = 3
 # IncompleteRead is not an OSError.
 FETCH_ERRORS = (OSError, http.client.HTTPException)
@@ -233,7 +237,7 @@ def page_hits(term, pattern, url, sections, context):
 
 def find(term, pages, context=1, skip=()):
     """Every section that contains the term, definitions first, as
-    (is_definition, cite, first quote, matching lines) tuples."""
+    (is_definition, cite, quotes) tuples."""
     pattern = term_pattern(term)
     definitions, mentions, failed = [], [], []
     for _, url, _ in pages:
@@ -251,15 +255,13 @@ def find(term, pages, context=1, skip=()):
 
 
 def by_section(hits):
-    # One quote per section, so one long section cannot fill the output and hide other pages.
+    # Grouped by section, so one long section cannot fill the output and hide other pages.
     groups = {}
     for is_def, cite, quote in hits:
         link = cite.split("\n", 1)[0]
-        if link in groups:
-            groups[link][3] += 1
-        else:
-            groups[link] = [is_def, cite, quote, 1]
-    return [tuple(g) for g in groups.values()]
+        _, _, quotes = groups.setdefault(link, (is_def, cite, []))
+        quotes.append(quote)
+    return list(groups.values())
 
 
 def reason(error):
@@ -312,19 +314,29 @@ def suggest(term, pages, limit=SUGGESTIONS):
     return found
 
 
-def report_hits(hits, limit, topic=None):
-    for _, cite, quote, lines in hits[:limit]:
+def find_command(term, topic, max_sections, max_per_section):
+    operands = [term, topic] if topic else [term]
+    return "vmdocs.py find --sections %d --per-section %d -- %s" % (
+        max_sections, max_per_section, shlex.join(operands))
+
+
+def report_hits(hits, term, topic, max_sections, max_per_section):
+    for _, cite, quotes in hits[:max_sections]:
         print(cite)
-        print(quote)
-        if lines > 1:
-            print("(%d more matching lines in this section)" % (lines - 1))
+        print("\n".join(quotes[:max_per_section]))
+        hidden = len(quotes) - max_per_section
+        if hidden > 0:
+            noun = "line" if hidden == 1 else "lines"
+            print("(%d more matching %s in this section; to see them, run: %s)"
+                  % (hidden, noun, find_command(term, topic, max_sections, len(quotes))))
         print()
-    if len(hits) > limit:
-        pages = {cite.split("#")[0].split("\n")[0] for _, cite, _, _ in hits}
+    if len(hits) > max_sections:
+        pages = {cite.split("#")[0].split("\n")[0] for _, cite, _ in hits}
         print("Showing %d of %d sections (%d matching lines on %d pages)."
-              % (limit, len(hits), sum(h[3] for h in hits), len(pages)))
-        print("The term is also in the sections not shown. Run again with --limit N to see them%s."
-              % ("" if topic else ", or with a topic to search one product"))
+              % (max_sections, len(hits), sum(len(quotes) for _, _, quotes in hits), len(pages)))
+        print("The term is also in the sections not shown%s. To see them, run: %s"
+              % ("" if topic else "; a topic limits the search to one product",
+                 find_command(term, topic, len(hits), max_per_section)))
     return 0
 
 
@@ -377,16 +389,18 @@ def cmd_topics():
     return 0
 
 
-def cmd_find(term, topic, limit):
+def cmd_find(term, topic, max_sections, max_per_section):
     entries, complete = load_index()
     if topic:
         names = [name for name, _ in topics(entries)]
         if topic not in names:
             return report_incomplete_index() if not complete else report_unknown_topic(topic, names)
         entries = roots_first(section_pages(entries, topic))
-    hits, failed = find(term, entries, skip=prefetch(entries))
+    # Several quotes with context lines would repeat the lines that nearby matches share.
+    context = 1 if max_per_section == 1 else 0
+    hits, failed = find(term, entries, context, skip=prefetch(entries))
     if hits:
-        return report_hits(hits, limit, topic)
+        return report_hits(hits, term, topic, max_sections, max_per_section)
     if failed:
         return report_unfetched(failed, len(entries))
     if not complete:
@@ -396,36 +410,59 @@ def cmd_find(term, topic, limit):
     return report_not_found(term, where, len(entries), close)
 
 
-def take_limit(args):
-    """Removes --limit N from args; returns N, the default, or None if N is invalid."""
-    if "--limit" not in args:
-        return HITS_SHOWN
-    i = args.index("--limit")
-    value = args[i + 1] if i + 1 < len(args) else ""
-    del args[i:i + 2]
+def parse_options(args):
+    """Splits args at "--" into options and operands, as POSIX utility syntax guideline 10
+    says. Without "--" every argument is an operand. A repeated option takes the last value."""
+    options = {"--sections": SECTIONS_SHOWN, "--per-section": QUOTES_PER_SECTION}
+    if "--" not in args:
+        return options, args
+    i = args.index("--")
+    given = iter(args[:i])
+    for name in given:
+        if name not in options:
+            raise ValueError("unknown option: %s" % name)
+        value = next(given, None)
+        if value is None:
+            raise ValueError("%s needs a value" % name)
+        options[name] = positive_int(name, value)
+    return options, args[i + 1:]
+
+
+def positive_int(name, value):
     try:
-        limit = int(value)
-    except ValueError:
-        return None
-    return limit if limit > 0 else None
+        number = int(value)
+    except ValueError:  # also raised for a number too long to convert
+        number = 0
+    if number < 1:
+        raise ValueError("%s needs a positive whole number" % name)
+    return number
+
+
+def usage_error(message):
+    print(message, file=sys.stderr)
+    print(__doc__, file=sys.stderr)
+    return 2
 
 
 def dispatch(argv):
     args = argv[1:]
-    limit = take_limit(args)
-    if limit is None:
-        print("--limit needs a positive whole number")
-        return 2
+    if args in (["-h"], ["--help"]):
+        print(__doc__)
+        return 0
     if args == ["topics"]:
         return cmd_topics()
-    if len(args) < 2:
-        print(__doc__)
-        return 2
-    command, term = args[0], args[1]
-    if command == "find":
-        return cmd_find(term, args[2] if len(args) > 2 else None, limit)
-    print("unknown command: %s" % command)
-    return 2
+    if not args:
+        return usage_error("missing command")
+    if args[0] != "find":
+        return usage_error("unknown command: %s" % args[0])
+    try:
+        options, operands = parse_options(args[1:])
+    except ValueError as e:
+        return usage_error(str(e))
+    if len(operands) not in (1, 2):
+        return usage_error("find needs a term and at most one topic; options go before --")
+    topic = operands[1] if len(operands) == 2 else None
+    return cmd_find(operands[0], topic, options["--sections"], options["--per-section"])
 
 
 def main(argv):

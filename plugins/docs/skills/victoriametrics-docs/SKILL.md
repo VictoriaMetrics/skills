@@ -56,8 +56,14 @@ python3 <skill_base_dir>/scripts/vmdocs.py find "/select/logsql/hits"
 python3 <skill_base_dir>/scripts/vmdocs.py find "block_stats" "victorialogs"
 
 # Show up to 10 sections instead of 3
-python3 <skill_base_dir>/scripts/vmdocs.py find "extra_filters" "victorialogs" --limit 10
+python3 <skill_base_dir>/scripts/vmdocs.py find --sections 10 -- "extra_filters" "victorialogs"
+
+# Show up to 5 matching lines in each section instead of 1, without the lines around them
+python3 <skill_base_dir>/scripts/vmdocs.py find --per-section 5 -- "-retentionPeriod" "victorialogs"
 ```
+
+Options go before `--`. Without `--` every argument is the term or the topic, so a term that
+starts with `-`, such as `-retentionPeriod` or `--sections`, needs no escaping.
 
 A topic must be a name that `topics` prints, such as `victorialogs` or `operator`. Any other
 topic exits 2 and prints the list, so never guess one.
@@ -94,8 +100,8 @@ cannot prove the term is absent. The script lists the pages that failed.
 A hit is a link to the section, then one matching line in it with one line on each side: the
 definition when the section has one, otherwise the first match. A flag definition starts at the
 flag line, because the line above it describes the previous flag. When the section has more
-matching lines, a count follows the quote. Cite the link, quote the lines (long lines shortened
-here):
+matching lines, a count follows the quote with the command that shows them. Cite the link, quote
+the lines (long lines shortened here):
 
 ```
 $ vmdocs.py find "-retentionPeriod" victorialogs
@@ -109,7 +115,7 @@ shown sections as everything:
 
 ```
 Showing 3 of 7 sections (12 matching lines on 4 pages).
-The term is also in the sections not shown. Run again with --limit N to see them.
+The term is also in the sections not shown. To see them, run: vmdocs.py find --sections 7 --per-section 1 -- -retentionPeriod victorialogs
 ```
 
 A miss states what was searched, then any close documented terms. Each is a different term:
