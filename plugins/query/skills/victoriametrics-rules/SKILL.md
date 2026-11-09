@@ -6,17 +6,17 @@ description: >
   rule would fire over a past window, or asks why an alert fired, did not fire or fired late.
   Triggers on: alerting rule, recording rule, vmalert, alert did not fire, alert fired late,
   would this alert fire, for duration, keep_firing_for, LogsQL alert, vlogs rule.
-allowed-tools: Bash(curl:*), Bash(jq:*), Bash(python3:*), Read
+allowed-tools: Bash(curl:*), Bash(jq:*), Bash(vmalert:*), Bash(vmalert-tool:*), Read
 ---
 
 # vmalert rules
 
-Everything here is an HTTP call against a running vmalert and its datasource. `/-/reload` is the
-only write, and nothing writes to the datasource. Nothing needs the `vmalert` or `vmalert-tool`
-binaries.
+Most steps are HTTP calls against a running vmalert and its datasource, and `/-/reload` is the
+only write to it. Checking a rule uses the `vmalert` and `vmalert-tool` binaries, and replay
+writes only to a scratch VictoriaMetrics.
 
 - Write a new rule: [Write a rule](#write-a-rule).
-- Would a rule fire over a past window: [Check when a rule fires](#check-when-a-rule-fires).
+- Is a rule valid, and would it fire: [Check a rule](#check-a-rule).
 - Why an alert fired, did not fire or fired late: [Debug a past alert](#debug-a-past-alert).
 - A rule that fails or stays quiet now: [Read a rule's state now](#read-a-rules-state-now).
 - A `type: vlogs` rule: also read `references/logs-rules.md`.
@@ -58,9 +58,8 @@ for each.
 
 ## Critical Rules
 
-- **Do not run `vmalert -replay` to answer "would this have fired".** Replay writes `ALERTS` and
-  `ALERTS_FOR_STATE` to `-remoteWrite.url`, which injects synthetic alerts into production
-  storage. `scripts/would_fire.py` answers the question and writes nothing.
+- **Replay into a scratch VictoriaMetrics, never into production.** `vmalert -replay` writes
+  `ALERTS` and `ALERTS_FOR_STATE` to `-remoteWrite.url`.
 - For an alert in the past, start from `ALERTS` and `ALERTS_FOR_STATE`. vmalert keeps only the
   last 20 evaluations of a rule in memory (`-rule.updateEntriesLimit`), a restart clears them, and
   debug mode is off by default.
@@ -93,13 +92,12 @@ for each.
    ```
 
    Give every alert a `dashboard` annotation that opens the panel for the same series, with the
-   alert's labels in the URL. Labels accept only `$labels`, `$value` and `$expr`. Never put
-   `$value` in a label: each new value makes a new alert, so `for` never elapses. `for` holds the
-   alert until the condition has been true that long. `keep_firing_for` holds it after the
-   condition clears, which stops a flapping alert.
-3. **Check when it fires** against the window of a real past incident, with
-   [Check when a rule fires](#check-when-a-rule-fires). Silence there means the rule would have
-   missed that incident.
+   alert's labels in the URL. Labels of an alerting rule accept only `$labels`, `$value` and
+   `$expr`. Never put `$value` in a label: each new value makes a new alert, so `for` never
+   elapses. `for` holds the alert until the condition has been true that long. `keep_firing_for`
+   holds it after the condition clears, which stops a flapping alert.
+3. **Check it** with [Check a rule](#check-a-rule): validate it, unit-test it, and replay it over a
+   real past incident. Silence in the replay means the rule would have missed that incident.
 4. **Reload and verify.** Put the rule in a file that vmalert loads through `-rule`, then:
 
    ```bash
@@ -114,57 +112,44 @@ for each.
    first evaluation and for `type: vlogs` rules. Once it fires, check that the
    `dashboard` link in `/api/v1/alerts` opens the right panel.
 
-## Check when a rule fires
+## Check a rule
 
-`scripts/would_fire.py` sends what vmalert sends: one instant query per evaluation, at each
-multiple of the interval, with vmalert's `step`. Then it applies `for` and `keep_firing_for` per
-series. `<skill_base_dir>` is the directory that holds this SKILL.md. Run the script; there is no
-need to read it.
+1. **Validate** the file. vmalert parses the expressions and templates and needs no datasource:
 
-Take the settings from vmalert, not from the rule file:
+   ```bash
+   vmalert -rule=rules.yml -dryRun
+   ```
 
-```bash
-curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sS --fail-with-body "$VM_ALERT_URL/api/v1/rules" \
-  | jq -r '.data.groups[] | .interval as $i | .params as $p | .eval_delay as $d | .rules[]
-           | select(.name=="QueueBacklog")
-           | "expr=\(.query)\tfor=\(.duration)s\tinterval=\($i)s\tkeep_firing_for=\(.keep_firing_for // 0)s\tparams=\($p // [])\teval_delay=\($d // "flag")\tgroup_id=\(.group_id)\tid=\(.id)"'
-```
+   Exit code 0 means the file is valid.
 
-```bash
-python3 <skill_base_dir>/scripts/would_fire.py \
-  --url "$VM_METRICS_URL" \
-  --query 'queue_depth{job="worker"} > 100' \
-  --start 2026-09-30T15:12:00Z --end 2026-09-30T15:24:00Z \
-  --step 30s --for 2m --keep-firing-for 0s --eval-step 300s
-```
+2. **Unit-test** it on made-up series. A test says when the alert fires, with which labels and
+   annotations, and covers `for` and `keep_firing_for`. See `references/unittest.md`:
 
-```
-{job="worker"}
-  pending 2026-09-30T15:15:30Z, fires 2026-09-30T15:17:30Z, resolved 2026-09-30T15:19:30Z
-  pending 2026-09-30T15:20:30Z, never fires, cleared 2026-09-30T15:21:30Z before for=120s
-```
+   ```bash
+   vmalert-tool unittest --files=rules_test.yml
+   ```
 
-- `--step` is the group `interval`. Another value moves every evaluation and gives wrong times.
-- `--eval-step` is the `step=` in the rule's `curl` field (see
-  [Read a rule's state now](#read-a-rules-state-now)), which is `-datasource.queryStep`, 5m by
-  default. It decides how far back each query looks, so a range query with a short step can
-  disagree with vmalert: `increase(x) > 12` covers 5m in vmalert's query and only 30s in a 30s
-  range query.
-- Pass each group param with `--param`, as `/api/v1/rules` lists it: `--param extra_label=env=dev`.
-  Keep any params of `-datasource.url` in `--url`.
-- Exit 0: a series is firing at some point inside the window, also when it fired before
-  `--start`. Exit 1: none is. Exit 2: no verdict, because the datasource failed, returned a
-  partial result, a warning or a reply the script cannot read, the query does not return an
-  instant vector, or two series collide once `__name__` is dropped. Never report exit 2 as "the
-  rule would not fire".
-- The script reads the data as it is stored now, so it also sees data that arrived after vmalert
-  evaluated it.
-- With `keep_firing_for`, exit 1 is not proof: an alert can keep firing through short gaps from
-  before the first evaluation checked. Check `ALERTS` for that window.
-- It covers `type: prometheus` rules only. It does not send `-datasource.headers`, group `headers`
-  or a tenant header, and does not apply `eval_offset`, `eval_delay`, `eval_alignment: false` or
-  the group `limit`. Pass `-datasource.roundDigits` as `--param round_digits=N`. If one of these
-  applies to the rule, say so with the verdict.
+3. **Replay** it on real data to see whether it would have fired in a past incident. Start a
+   scratch VictoriaMetrics and point `-remoteWrite.url` at it, never at production or
+   `$VM_METRICS_URL`. Pass the same `-datasource.*` auth flags and `-external.label` as the
+   running vmalert; `$VM_ALERT_URL/flags` lists them:
+
+   ```bash
+   docker run -d --rm -p 18428:8428 victoriametrics/victoria-metrics
+   vmalert -rule=rules.yml \
+     -datasource.url="$VM_METRICS_URL" \
+     -remoteWrite.url=http://localhost:18428 \
+     -replay.timeFrom=2026-09-30T15:00:00Z -replay.timeTo=2026-09-30T16:00:00Z \
+     -replay.disableProgressBar
+   ```
+
+   Then read `ALERTS` as in [Read what vmalert decided](#2-read-what-vmalert-decided), with the
+   scratch URL in place of `$VM_METRICS_URL`. New series take a few seconds to
+   become searchable, so an empty answer right after replay is not a miss: query again. Replay
+   sends no notifications. It ignores `keep_firing_for` and the group `limit`, disables the
+   `query` template function, and does not run `type: graphite` rules. It runs one range query
+   with `step` set to the group interval and no `eval_delay`, on the data as stored now, so it
+   can differ from what vmalert saw live.
 
 ## Debug a past alert
 
@@ -223,7 +208,7 @@ restores from `ALERTS_FOR_STATE` after a restart can go straight to firing, with
 
 ### 3. Compare with the data
 
-Run [Check when a rule fires](#check-when-a-rule-fires) over the same window. To see the values
+Replay the rule over the same window, as in [Check a rule](#check-a-rule). To see the values
 themselves, run the expression without its comparison as a range query with `step` set to the
 interval. Firing needs `for` / `interval` + 1 true evaluations in a row, and one evaluation with
 no result restarts the count.
@@ -232,7 +217,7 @@ no result restarts the count.
 |---|---|---|
 | condition true | pending, then firing | The rule worked. If nobody was paged, read `references/notifier.md` |
 | condition true | pending only | The condition cleared before `for` elapsed |
-| condition true | no points | vmalert never saw it. If other series of the rule have points then, or `would_fire.py` says it fires, the data arrived late: raise `eval_delay` on the group or `-rule.evalDelay` (30s unless `/flags` lists it). With no points for any series, vmalert was down, the rule was failing, or evaluations were skipped (`vmalert_iteration_missed_total` in `/metrics`) |
+| condition true | no points | vmalert never saw it. If other series of the rule have points then, or a replay fires, the data arrived late: raise `eval_delay` on the group or `-rule.evalDelay` (30s unless `/flags` lists it). With no points for any series, vmalert was down, the rule was failing, or evaluations were skipped (`vmalert_iteration_missed_total` in `/metrics`) |
 | condition false | no points | The threshold was never crossed |
 | condition false | pending or firing | `keep_firing_for` held it, or the data changed after vmalert read it |
 
@@ -284,5 +269,4 @@ the evaluations after you turn it on.
 - `/api/v1/rule`, `/api/v1/alert` and `/api/v1/group` are **not** wrapped in
   `{"status":...,"data":...}`. `/api/v1/rule` and `/api/v1/alert` need `group_id` and the rule or
   alert id.
-- `type: graphite` rules: everything above applies except `would_fire.py`, because vmalert sends
-  them to `/render`.
+- `type: graphite` rules: everything above applies except replay.
