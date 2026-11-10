@@ -1,7 +1,7 @@
 {
   "name": "docs",
   "description": "Look up VictoriaMetrics, VictoriaLogs, VictoriaTraces, operator, vmanomaly, Helm chart and Cloud documentation before naming a command-line flag, an HTTP API path or a query construct.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "VictoriaMetrics"
   },
