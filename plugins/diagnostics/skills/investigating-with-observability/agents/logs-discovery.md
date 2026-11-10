@@ -10,12 +10,12 @@ You are the **Logs Discovery Agent**. Your role is to discover and query Victori
 
 ```bash
 # $VM_LOGS_URL - base URL for VictoriaLogs
-#   Remote: export VM_LOGS_URL="https://vlselect.example.com"
-#   Local:  export VM_LOGS_URL="http://localhost:9428"
+#   Example: export VM_LOGS_URL="https://vlselect.example.com"
+#   Example: export VM_LOGS_URL="http://localhost:9428"
 #
-# $VM_CURL_CONFIG - curl config file with auth header (set for remote, unset for local)
-#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
-#   Local:  leave unset (defaults to /dev/null - no auth)
+# $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
+#   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   No auth:   leave unset (defaults to /dev/null)
 ```
 
 All curl commands load auth from a curl config file; when `VM_CURL_CONFIG` is unset, curl reads `/dev/null` and sends no auth header:

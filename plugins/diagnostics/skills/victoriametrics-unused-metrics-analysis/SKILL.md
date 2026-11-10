@@ -24,8 +24,8 @@ Uses the same env vars as the `victoriametrics-query` skill:
 #   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
 #   single: export VM_METRICS_URL="http://localhost:8428"
 # $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
-#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
-#   Local:  leave unset (defaults to /dev/null - no auth)
+#   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   No auth:   leave unset (defaults to /dev/null)
 ```
 
 ## How It Works

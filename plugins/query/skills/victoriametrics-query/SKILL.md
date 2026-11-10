@@ -19,14 +19,14 @@ Query VictoriaMetrics HTTP API directly via curl. Covers instant/range queries, 
 # $VM_METRICS_URL - base URL
 #   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
 #   single: export VM_METRICS_URL="http://localhost:8428"
-# $VM_CURL_CONFIG - curl config file with auth header (set for remote, unset for local)
-#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
-#   Local:  leave unset (defaults to /dev/null - no auth)
+# $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
+#   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   No auth:   leave unset (defaults to /dev/null)
 ```
 
 ## Auth Pattern
 
-All curl commands load auth from a curl config file - works for both remote and local:
+All curl commands load auth from a curl config file:
 
 ```bash
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s "$VM_METRICS_URL/api/v1/query?query=up" | jq .
@@ -204,7 +204,7 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "${VM_METRICS_URL%%/select/*}/prettify-query?query=rate(x[5m])" | jq .
 ```
 
-Note: `${VM_METRICS_URL%%/select/*}` strips everything from `/select` onward, yielding the base host. On single-node (local), `VM_METRICS_URL` has no `/select` prefix so it returns the URL unchanged.
+Note: `${VM_METRICS_URL%%/select/*}` strips everything from `/select` onward, yielding the base host. On single-node, `VM_METRICS_URL` has no `/select` prefix so it returns the URL unchanged.
 
 ### Config Debug Tools
 

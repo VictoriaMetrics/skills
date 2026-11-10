@@ -13,7 +13,7 @@ Query Prometheus-compatible AlertManager HTTP API v2 directly via curl. Covers a
 
 ## Availability Warning
 
-AlertManager runs as an in-cluster pod and may be unavailable (crashloop, DNS failure, not deployed locally). Always check connectivity first. When AlertManager is down, ask vmalert for the firing and pending alerts:
+AlertManager runs as an in-cluster pod and may be unavailable (crashloop, DNS failure, not deployed). Always check connectivity first. When AlertManager is down, ask vmalert for the firing and pending alerts:
 
 ```bash
 # Fallback: firing/pending alerts from vmalert
@@ -29,13 +29,13 @@ AlertManager provides what VM alerts cannot: silences, inhibition state, and ale
 
 ```bash
 # $VM_ALERTMANAGER_URL - base URL
-#   Remote: export VM_ALERTMANAGER_URL="https://alertmanager.example.com"
-#   Local:  export VM_ALERTMANAGER_URL="http://localhost:9093"
+#   Example: export VM_ALERTMANAGER_URL="https://alertmanager.example.com"
+#   Example: export VM_ALERTMANAGER_URL="http://localhost:9093"
 # $VM_ALERT_URL - vmalert base URL, for the fallback
-#   Local:  export VM_ALERT_URL="http://localhost:8880"
-# $VM_CURL_CONFIG - curl config file with auth header (set for remote, unset for local)
-#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
-#   Local:  leave unset (defaults to /dev/null - no auth)
+#   Example: export VM_ALERT_URL="http://localhost:8880"
+# $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
+#   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   No auth:   leave unset (defaults to /dev/null)
 ```
 
 ## Auth Pattern

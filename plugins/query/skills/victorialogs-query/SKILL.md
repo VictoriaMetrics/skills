@@ -17,9 +17,9 @@ Query VictoriaLogs HTTP API directly via curl. Covers log search, stats queries,
 ```bash
 # $VM_LOGS_URL - base URL
 #   Example: export VM_LOGS_URL="https://vlselect.example.com"
-# $VM_CURL_CONFIG - curl config file with auth header (set for remote, unset for local)
-#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
-#   Local:  leave unset (defaults to /dev/null - no auth)
+# $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
+#   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   No auth:   leave unset (defaults to /dev/null)
 ```
 
 ## Auth Pattern

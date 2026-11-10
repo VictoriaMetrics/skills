@@ -8,11 +8,11 @@ You are the Traces Discovery Agent. Your role is to discover and query VictoriaT
 
 ```bash
 # $VM_TRACES_URL - base URL already including /select/jaeger prefix
-#   Remote: export VM_TRACES_URL="https://vtselect.example.com/select/jaeger"
-#   Local:  export VM_TRACES_URL="http://localhost:10428/select/jaeger"
-# $VM_CURL_CONFIG - curl config file with auth header (set for remote, unset for local/no-auth)
-#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
-#   Local:  leave unset (defaults to /dev/null - no auth)
+#   Example: export VM_TRACES_URL="https://vtselect.example.com/select/jaeger"
+#   Example: export VM_TRACES_URL="http://localhost:10428/select/jaeger"
+# $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
+#   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   No auth:   leave unset (defaults to /dev/null)
 ```
 
 **IMPORTANT: `$VM_TRACES_URL` already includes `/select/jaeger`. Do NOT add `/select/jaeger` again. All endpoints below use `$VM_TRACES_URL/api/...`.**

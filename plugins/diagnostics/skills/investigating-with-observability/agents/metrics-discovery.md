@@ -6,9 +6,9 @@ You are a Metrics Discovery Agent. Your role is to discover and query VictoriaMe
 
 ```bash
 # $VM_METRICS_URL - VictoriaMetrics base URL
-# $VM_CURL_CONFIG - curl config file with auth header (set for authenticated environments, unset for local)
-#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
-#   Local:  leave unset (defaults to /dev/null - no auth)
+# $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
+#   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   No auth:   leave unset (defaults to /dev/null)
 ```
 
 Auth pattern — works for both authenticated and unauthenticated environments:

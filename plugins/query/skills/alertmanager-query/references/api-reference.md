@@ -284,7 +284,7 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
 ## Auth Pattern
 
 ```bash
-# Auth via curl config file (works for both remote and local)
+# Auth via curl config file
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s "$VM_ALERTMANAGER_URL/api/v2/alerts"
 
 # POST with auth and JSON body
@@ -300,7 +300,7 @@ AlertManager runs as an in-cluster pod. It may be unavailable due to:
 
 - Pod crashloop or OOM
 - DNS resolution failure
-- Not deployed in local/dev environments
+- Not deployed
 
 **Fallback strategy:**
 

@@ -17,9 +17,9 @@ Query VictoriaTraces Jaeger-compatible HTTP API directly via curl. Covers servic
 ```bash
 # $VM_TRACES_URL - base URL including /select/jaeger prefix
 #   Example: export VM_TRACES_URL="https://vtselect.example.com/select/jaeger"
-# $VM_CURL_CONFIG - curl config file with auth header (set for remote, unset for local)
-#   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
-#   Local:  leave unset (defaults to /dev/null - no auth)
+# $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
+#   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
+#   No auth:   leave unset (defaults to /dev/null)
 ```
 
 IMPORTANT: The Jaeger API lives under `/select/jaeger/api/...`, NOT root `/api/...`. The `$VM_TRACES_URL` env var already includes the `/select/jaeger` prefix, so all endpoints below use `$VM_TRACES_URL/api/...`.

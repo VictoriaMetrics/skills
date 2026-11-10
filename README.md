@@ -152,7 +152,7 @@ VM_ALERTMANAGER_URL   # AlertManager endpoint (optional)
 VM_ALERT_URL          # vmalert endpoint, the fallback when AlertManager is down (e.g., http://localhost:8880)
 VM_ANOMALY_URL        # vmanomaly endpoint, including path prefix if configured (e.g., http://localhost:8490)
 VM_CURL_CONFIG        # Path to a mode-0600 curl config file containing the auth header
-                      # (leave unset for unauthenticated local instances - defaults to /dev/null)
+                      # (leave unset for unauthenticated instances - defaults to /dev/null)
 ```
 
 ### Authentication setup
@@ -165,7 +165,7 @@ agent transcripts. Every command uses the same pattern:
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s "$VM_METRICS_URL/api/v1/query?query=up"
 ```
 
-For unauthenticated local instances no setup is needed: when `VM_CURL_CONFIG` is unset, curl reads
+For unauthenticated instances no setup is needed: when `VM_CURL_CONFIG` is unset, curl reads
 `/dev/null` and sends no auth header.
 
 For authenticated instances, create a config file readable only by you and point `VM_CURL_CONFIG` at it:
@@ -208,4 +208,4 @@ To migrate:
    unset VM_AUTH_HEADER
    ```
 
-3. If you never set `VM_AUTH_HEADER` (unauthenticated local instances), no action is needed.
+3. If you never set `VM_AUTH_HEADER` (unauthenticated instances), no action is needed.
