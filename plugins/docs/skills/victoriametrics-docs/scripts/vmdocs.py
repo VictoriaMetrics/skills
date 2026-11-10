@@ -3,7 +3,11 @@
 
 Commands:
   topics                  list the documentation sections a lookup can be limited to
-  find TERM [TOPIC]       print the lines that contain the term, with section links
+  find [--sections N] [--per-section N] -- TERM [TOPIC]
+  find TERM [TOPIC]       print the lines that contain the term under links to their
+                          sections: N sections at most (default 3), N lines in each
+                          (default 1). Options go before "--"; without "--" there are
+                          none, so a term like "-retentionPeriod" needs no escaping.
 
 Pages come from https://docs.victoriametrics.com/llms.txt and the sitemap.
 
@@ -18,11 +22,13 @@ proven.
 
 import concurrent.futures
 import difflib
+import functools
 import hashlib
 import html
 import http.client
 import os
 import re
+import shlex
 import stat
 import sys
 import tempfile
@@ -39,7 +45,8 @@ FETCH_WORKERS = 8
 # An agent's shell call is killed at 120 s; answer UNKNOWN before that.
 TIME_BUDGET_SECONDS = 90
 PAGE_TIMEOUT_SECONDS = 15
-HITS_SHOWN = 3
+SECTIONS_SHOWN = 3
+QUOTES_PER_SECTION = 1
 SUGGESTIONS = 3
 # IncompleteRead is not an OSError.
 FETCH_ERRORS = (OSError, http.client.HTTPException)
@@ -60,28 +67,42 @@ SUGGEST_CUTOFF = 0.8
 DEADLINE = time.monotonic() + TIME_BUDGET_SECONDS
 
 
+class CacheError(Exception):
+    """The local page cache cannot be used. Not an OSError, so it is not reported as a fetch error."""
+
+
 def cache_dir():
+    try:
+        os.makedirs(CACHE_DIR, mode=0o700, exist_ok=True)
+        info = os.lstat(CACHE_DIR)
+    except OSError:
+        return None
     # Another user could create it first and plant fake pages.
-    os.makedirs(CACHE_DIR, mode=0o700, exist_ok=True)
-    info = os.lstat(CACHE_DIR)
     if not stat.S_ISDIR(info.st_mode) or (hasattr(os, "getuid") and info.st_uid != os.getuid()):
-        raise PermissionError("%s is not a directory you own; remove it and run again" % CACHE_DIR)
+        raise CacheError("%s is not a directory you own; remove it and run again" % CACHE_DIR)
     return CACHE_DIR
 
 
 def read_cache(path):
-    if not os.path.exists(path) or time.time() - os.path.getmtime(path) >= CACHE_MAX_AGE:
+    try:
+        if time.time() - os.path.getmtime(path) >= CACHE_MAX_AGE:
+            return None
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except (OSError, UnicodeError):
         return None
-    with open(path, encoding="utf-8") as f:
-        return f.read()
 
 
 def write_cache(path, body):
     # Atomic, so an interrupted write never leaves a truncated page in the cache.
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path))
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(body)
-    os.replace(tmp, path)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(body)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
 
 
 def download(url):
@@ -93,11 +114,17 @@ def download(url):
 
 
 def fetch(url):
-    path = os.path.join(cache_dir(), hashlib.sha1(url.encode()).hexdigest())
+    directory = cache_dir()
+    if directory is None:
+        return download(url)
+    path = os.path.join(directory, hashlib.sha1(url.encode()).hexdigest())
     body = read_cache(path)
     if body is None:
         body = download(url)
-        write_cache(path, body)
+        try:
+            write_cache(path, body)
+        except OSError:
+            pass  # The cache only saves time; the page is already in hand.
     return body
 
 
@@ -128,6 +155,11 @@ def to_text(page):
             continue
         sections.append((anchor, line))
     return sections
+
+
+@functools.lru_cache(maxsize=None)
+def page_text(url):
+    return to_text(fetch(url))
 
 
 def llms_entries(text):
@@ -213,16 +245,19 @@ def page_hits(term, pattern, url, sections, context):
     for n, (anchor, line) in enumerate(sections):
         if not pattern.search(line):
             continue
-        start = max(0, n - context)
-        quote = "\n".join(t for _, t in sections[start:n + context + 1])
+        definition = is_definition(term, anchor, line)
+        # In a flag list the line above a flag describes the previous flag.
+        before = 0 if definition and term.startswith("-") else context
+        quote = "\n".join(t for a, t in sections[max(0, n - before):n + context + 1] if a == anchor)
         cite = url + "#" + anchor if anchor else url
         if term.startswith("/") and matched_path(term, line) != term:
-            cite += "\nmatched in " + matched_path(term, line)
-        yield is_definition(term, anchor, line), cite, quote
+            quote = "matched in " + matched_path(term, line) + "\n" + quote
+        yield definition, cite, quote
 
 
-def find(term, pages, context=1, cap=HITS_SHOWN, skip=()):
-    # Pages are read to the end: a flag list is often below the first mentions.
+def find(term, pages, context=1, skip=()):
+    """Every section that contains the term, definitions first, as
+    (is_definition, cite, quotes) tuples."""
     pattern = term_pattern(term)
     definitions, mentions, failed = [], [], []
     for _, url, _ in pages:
@@ -230,18 +265,22 @@ def find(term, pages, context=1, cap=HITS_SHOWN, skip=()):
             failed.append((url, skip[url]))
             continue
         try:
-            sections = to_text(fetch(url))
+            sections = page_text(url)
         except FETCH_ERRORS as e:
             failed.append((url, reason(e)))
             continue
         for hit in page_hits(term, pattern, url, sections, context):
-            if hit[0]:
-                definitions.append(hit)
-            elif len(mentions) < cap:
-                mentions.append(hit)
-        if definitions and len(definitions) + len(mentions) >= cap:
-            break
-    return (definitions + mentions)[:cap], failed
+            (definitions if hit[0] else mentions).append(hit)
+    return by_section(definitions + mentions), failed
+
+
+def by_section(hits):
+    # Grouped by section, so one long section cannot fill the output and hide other pages.
+    groups = {}
+    for is_def, cite, quote in hits:
+        _, _, quotes = groups.setdefault(cite, (is_def, cite, []))
+        quotes.append(quote)
+    return list(groups.values())
 
 
 def reason(error):
@@ -264,7 +303,7 @@ def documented_terms(term, pages):
     terms = set()
     for _, url, _ in pages:
         try:
-            sections = to_text(fetch(url))
+            sections = page_text(url)
         except FETCH_ERRORS:
             continue
         for _, line in sections:
@@ -288,17 +327,35 @@ def suggest(term, pages, limit=SUGGESTIONS):
     ranked = sorted(extend, key=len) + [t for _, t in sorted(similar)]
     found = []
     for t in ranked[:limit]:
-        hits, _ = find(t, pages, cap=1)
+        hits, _ = find(t, pages)
         if hits:
             found.append((t, hits[0][1]))
     return found
 
 
-def report_hits(hits):
-    for _, cite, quote in hits[:HITS_SHOWN]:
+def find_command(term, topic, max_sections, max_per_section):
+    operands = [term, topic] if topic else [term]
+    return "vmdocs.py find --sections %d --per-section %d -- %s" % (
+        max_sections, max_per_section, shlex.join(operands))
+
+
+def report_hits(hits, term, topic, max_sections, max_per_section):
+    for _, cite, quotes in hits[:max_sections]:
         print(cite)
-        print(quote)
+        print("\n".join(quotes[:max_per_section]))
+        hidden = len(quotes) - max_per_section
+        if hidden > 0:
+            noun = "line" if hidden == 1 else "lines"
+            print("(%d more matching %s in this section; to see them, run: %s)"
+                  % (hidden, noun, find_command(term, topic, max_sections, len(quotes))))
         print()
+    if len(hits) > max_sections:
+        pages = {cite.split("#")[0] for _, cite, _ in hits}
+        print("Showing %d of %d sections (%d matching lines on %d pages)."
+              % (max_sections, len(hits), sum(len(quotes) for _, _, quotes in hits), len(pages)))
+        print("The term is also in the sections not shown%s. To see them, run: %s"
+              % ("" if topic else "; a topic limits the search to one product",
+                 find_command(term, topic, len(hits), max_per_section)))
     return 0
 
 
@@ -351,16 +408,18 @@ def cmd_topics():
     return 0
 
 
-def cmd_find(term, topic):
+def cmd_find(term, topic, max_sections, max_per_section):
     entries, complete = load_index()
     if topic:
         names = [name for name, _ in topics(entries)]
         if topic not in names:
             return report_incomplete_index() if not complete else report_unknown_topic(topic, names)
         entries = roots_first(section_pages(entries, topic))
-    hits, failed = find(term, entries, skip=prefetch(entries))
+    # Several quotes with context lines would repeat the lines that nearby matches share.
+    context = 1 if max_per_section == 1 else 0
+    hits, failed = find(term, entries, context, skip=prefetch(entries))
     if hits:
-        return report_hits(hits)
+        return report_hits(hits, term, topic, max_sections, max_per_section)
     if failed:
         return report_unfetched(failed, len(entries))
     if not complete:
@@ -370,22 +429,72 @@ def cmd_find(term, topic):
     return report_not_found(term, where, len(entries), close)
 
 
-def dispatch(argv):
-    if argv[1:] == ["topics"]:
-        return cmd_topics()
-    if len(argv) < 3:
-        print(__doc__)
-        return 2
-    command, term = argv[1], argv[2]
-    if command == "find":
-        return cmd_find(term, argv[3] if len(argv) > 3 else None)
-    print("unknown command: %s" % command)
+def parse_options(args):
+    """Splits args at "--" into options and operands, as POSIX utility syntax guideline 10
+    says. Without "--" every argument is an operand. A repeated option takes the last value."""
+    options = {"--sections": SECTIONS_SHOWN, "--per-section": QUOTES_PER_SECTION}
+    if "--" not in args:
+        return options, args
+    i = args.index("--")
+    given = iter(args[:i])
+    for name in given:
+        if name not in options:
+            raise ValueError("unknown option: %s" % name)
+        value = next(given, None)
+        if value is None:
+            raise ValueError("%s needs a value" % name)
+        options[name] = positive_int(name, value)
+    return options, args[i + 1:]
+
+
+def positive_int(name, value):
+    try:
+        number = int(value) if value.isascii() and value.isdigit() else 0
+    except ValueError:  # also raised for a number too long to convert
+        number = 0
+    if number < 1:
+        raise ValueError("%s needs a positive whole number" % name)
+    return number
+
+
+def usage_error(message):
+    print(message, file=sys.stderr)
+    print(__doc__, file=sys.stderr)
     return 2
+
+
+def dispatch(argv):
+    args = argv[1:]
+    if args in (["-h"], ["--help"]):
+        print(__doc__)
+        return 0
+    if args == ["topics"]:
+        return cmd_topics()
+    if args[:1] == ["topics"]:
+        return usage_error("topics takes no arguments")
+    if not args:
+        return usage_error("missing command")
+    if args[0] != "find":
+        return usage_error("unknown command: %s" % args[0])
+    try:
+        options, operands = parse_options(args[1:])
+    except ValueError as e:
+        return usage_error(str(e))
+    if len(operands) not in (1, 2):
+        return usage_error("find needs a term and at most one topic; options go before --")
+    if not operands[0].strip():
+        return usage_error("the term is empty, so it would match every page")
+    topic = operands[1] if len(operands) == 2 else None
+    return cmd_find(operands[0], topic, options["--sections"], options["--per-section"])
 
 
 def main(argv):
     try:
         return dispatch(argv)
+    except CacheError as e:
+        print("UNKNOWN: %s" % e)
+        print("Nothing was searched. Do not report the term as undocumented.")
+        return 3
     except FETCH_ERRORS as e:
         return report_no_index(e)
 

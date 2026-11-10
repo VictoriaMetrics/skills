@@ -39,8 +39,8 @@ difference without checking.
 
 ## Usage
 
-`find` prints the lines that contain a term, under a link to their section. `topics` lists
-the sections a lookup can be limited to.
+`find` prints the lines that contain a term, one quote per section, under a link to that
+section. `topics` lists the sections a lookup can be limited to.
 
 ```bash
 # Which sections can a lookup be limited to?
@@ -54,7 +54,16 @@ python3 <skill_base_dir>/scripts/vmdocs.py find "/select/logsql/hits"
 
 # A LogsQL pipe, limited to the VictoriaLogs section
 python3 <skill_base_dir>/scripts/vmdocs.py find "block_stats" "victorialogs"
+
+# Show up to 10 sections instead of 3
+python3 <skill_base_dir>/scripts/vmdocs.py find --sections 10 -- "extra_filters" "victorialogs"
+
+# Show up to 5 matching lines in each section instead of 1, without the lines around them
+python3 <skill_base_dir>/scripts/vmdocs.py find --per-section 5 -- "-retentionPeriod" "victorialogs"
 ```
+
+Options go before `--`. Without `--` every argument is the term or the topic, so a term that
+starts with `-`, such as `-retentionPeriod` or `--sections`, needs no escaping.
 
 A topic must be a name that `topics` prints, such as `victorialogs` or `operator`. Any other
 topic exits 2 and prints the list, so never guess one.
@@ -88,15 +97,25 @@ cannot prove the term is absent. The script lists the pages that failed.
 
 ## Reading the output
 
-A hit is a link to the section, then the matching line with one line on each side. Cite the
-link, quote the lines (long lines shortened here):
+A hit is a link to the section, then one matching line in it with one line on each side: the
+definition when the section has one, otherwise the first match. A flag definition starts at the
+flag line, because the line above it describes the previous flag. When the section has more
+matching lines, a count follows the quote with the command that shows them. Cite the link, quote
+the lines (long lines shortened here):
 
 ```
 $ vmdocs.py find "-retentionPeriod" victorialogs
 https://docs.victoriametrics.com/victorialogs/#common-flags
-The maximum allowed disk usage percentage (1-100) for the filesystem that contains ...
 -retentionPeriod value
 Log entries with timestamps older than now-retentionPeriod are automatically deleted; ...
+```
+
+When the term is in more sections than were shown, the last lines say so. Do not treat the
+shown sections as everything:
+
+```
+Showing 3 of 7 sections (12 matching lines on 4 pages).
+The term is also in the sections not shown. To see them, run: vmdocs.py find --sections 7 --per-section 1 -- -retentionPeriod victorialogs
 ```
 
 A miss states what was searched, then any close documented terms. Each is a different term:
