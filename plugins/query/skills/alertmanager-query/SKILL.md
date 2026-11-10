@@ -4,7 +4,7 @@ description: >
   Query AlertManager via curl using the v2 API. Use when listing active/silenced alerts, creating/managing silences,
   or checking alert inhibition state. Triggers on: alertmanager, silences, silence alerts, alert filters,
   alert inhibition, alertmanager API, create silence, delete silence.
-allowed-tools: Bash(curl:*), Bash(jq:*), Bash(date:*)
+allowed-tools: Bash(curl:*), Bash(jq:*)
 ---
 
 # AlertManager Query (API v2)
@@ -13,13 +13,15 @@ Query Prometheus-compatible AlertManager HTTP API v2 directly via curl. Covers a
 
 ## Availability Warning
 
-AlertManager runs as an in-cluster pod and may be unavailable (crashloop, DNS failure, not deployed locally). Always check connectivity first. When AlertManager is down, fall back to VictoriaMetrics for alert data:
+AlertManager runs as an in-cluster pod and may be unavailable (crashloop, DNS failure, not deployed locally). Always check connectivity first. When AlertManager is down, ask vmalert for the firing and pending alerts:
 
 ```bash
-# Fallback: firing/pending alerts from VictoriaMetrics (always available)
+# Fallback: firing/pending alerts from vmalert
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
-  "$VM_METRICS_URL/api/v1/alerts" | jq '.data.alerts[]'
+  "$VM_ALERT_URL/api/v1/alerts" | jq '.data.alerts[]'
 ```
+
+`$VM_METRICS_URL/api/v1/alerts` gives the same list only when VictoriaMetrics runs with `-vmalert.proxyURL`. Without that flag it answers with an empty list.
 
 AlertManager provides what VM alerts cannot: silences, inhibition state, and alert routing.
 
@@ -28,7 +30,9 @@ AlertManager provides what VM alerts cannot: silences, inhibition state, and ale
 ```bash
 # $VM_ALERTMANAGER_URL - base URL
 #   Remote: export VM_ALERTMANAGER_URL="https://alertmanager.example.com"
-#   Local:  N/A (AlertManager typically not deployed locally)
+#   Local:  export VM_ALERTMANAGER_URL="http://localhost:9093"
+# $VM_ALERT_URL - vmalert base URL, for the fallback
+#   Local:  export VM_ALERT_URL="http://localhost:8880"
 # $VM_CURL_CONFIG - curl config file with auth header (set for remote, unset for local)
 #   Remote: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
 #   Local:  leave unset (defaults to /dev/null - no auth)
@@ -68,6 +72,15 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
 ```
 
 Parameters: `active` (bool, default true), `silenced` (bool, default true), `inhibited` (bool, default true), `unprocessed` (bool, default true), `filter` (string array, matcher expressions), `receiver` (string regex)
+
+The list holds only alerts that have not resolved. An alert leaves it once it resolves, so an empty list does not mean the alert never reached AlertManager. For past alerts, read `ALERTS`, which vmalert writes to VictoriaMetrics when it runs with `-remoteWrite.url`:
+
+```bash
+# When did HighMemory fire in the last 30 minutes (first and last firing evaluation)
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
+  --data-urlencode 'query=ALERTS{alertname="HighMemory", alertstate="firing"}[30m]' \
+  "$VM_METRICS_URL/api/v1/query" | jq -r '.data.result[] | "\(.values[0][0] | todate) .. \(.values[-1][0] | todate)"'
+```
 
 ### List Silences
 
@@ -147,9 +160,9 @@ All timestamps use RFC3339 format: `2026-03-07T00:00:00Z`
 ## Common Patterns
 
 ```bash
-# Quick connectivity check
-curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf -o /dev/null -w "%{http_code}" \
-  "$VM_ALERTMANAGER_URL/api/v2/alerts" && echo " OK" || echo " UNREACHABLE"
+# Quick connectivity check: 200 = up, 401 or 403 = auth problem, 000 = no HTTP response (host down, DNS, TLS or timeout)
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s -o /dev/null -w "%{http_code}\n" \
+  "$VM_ALERTMANAGER_URL/api/v2/alerts"
 
 # Count firing alerts
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
@@ -158,17 +171,15 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
 # Silence an alert for 2 hours from now
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   -X POST -H "Content-Type: application/json" \
-  -d "$(jq -n --arg start "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --arg end "$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)" \
-    '{matchers: [{name: "alertname", value: $ARGS.named.alert, isRegex: false, isEqual: true}],
-      startsAt: $start, endsAt: $end, createdBy: "claude", comment: $ARGS.named.reason}' \
-    --arg alert "AlertName" --arg reason "Investigation in progress")" \
+  -d "$(jq -n --arg alert "AlertName" --arg reason "Investigation in progress" \
+    '{matchers: [{name: "alertname", value: $alert, isRegex: false, isEqual: true}],
+      startsAt: (now | todate), endsAt: (now + 7200 | todate), createdBy: "claude", comment: $reason}')" \
   "$VM_ALERTMANAGER_URL/api/v2/silences" | jq .
 
-# Check if a specific alert is silenced
+# Check if a specific alert is silenced (an inhibited alert is also "suppressed", so read silencedBy)
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s -G \
   --data-urlencode 'filter=alertname="TargetAlert"' \
-  "$VM_ALERTMANAGER_URL/api/v2/alerts?active=false&silenced=true" | jq 'length'
+  "$VM_ALERTMANAGER_URL/api/v2/alerts" | jq '[.[] | select(.status.silencedBy | length > 0)] | length'
 ```
 
 ## Environment Switching
@@ -182,8 +193,9 @@ echo "VM_CURL_CONFIG: ${VM_CURL_CONFIG:-(unset - no auth)}"
 ## Important Notes
 
 - Path difference: plural `/api/v2/silences` for list/create, singular `/api/v2/silence/{id}` for get/delete
+- To change a silence, POST it again with its `id`. If the matchers change, AlertManager expires the old silence and returns a new ID: use the new one from then on
 - POST endpoints require `Content-Type: application/json`
 - DELETE returns empty body on success (HTTP 200)
 - `filter` parameter uses PromQL-style matchers: `alertname="Foo"`, `severity=~"critical|warning"`
-- AlertManager may be down — always have a fallback plan using `$VM_METRICS_URL/api/v1/alerts`
+- AlertManager may be down: fall back to `$VM_ALERT_URL/api/v1/alerts`
 - For full endpoint details, parameters, and response formats, see `references/api-reference.md`

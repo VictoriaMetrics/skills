@@ -199,7 +199,7 @@ Create a new silence.
 
 **Notes:**
 
-- To update an existing silence, include `"id": "existing-uuid"` in the request body
+- To update an existing silence, include `"id": "existing-uuid"` in the request body. If the matchers change, AlertManager expires the old silence and returns a new ID
 - `startsAt` and `endsAt` are RFC3339 timestamps
 - At least one matcher is required
 
@@ -304,15 +304,16 @@ AlertManager runs as an in-cluster pod. It may be unavailable due to:
 
 **Fallback strategy:**
 
-- For alert data: use `$VM_METRICS_URL/api/v1/alerts` (VictoriaMetrics built-in alert API)
-- For alert rules: use `$VM_METRICS_URL/api/v1/rules`
+- For alert data: use `$VM_ALERT_URL/api/v1/alerts` (vmalert)
+- For alert rules: use `$VM_ALERT_URL/api/v1/rules`
+- `$VM_METRICS_URL` serves both paths only when VictoriaMetrics runs with `-vmalert.proxyURL`. Without that flag it answers with empty lists
 - Silences and inhibition state have no fallback — they are AlertManager-only features
 
-**Connectivity check:**
+**Connectivity check:** 200 means up, 401 or 403 an auth problem, and 000 no HTTP response (host down, DNS, TLS or timeout).
 
 ```bash
-curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf -o /dev/null -w "%{http_code}" \
-  "$VM_ALERTMANAGER_URL/api/v2/alerts" && echo " OK" || echo " UNREACHABLE"
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s -o /dev/null -w "%{http_code}\n" \
+  "$VM_ALERTMANAGER_URL/api/v2/alerts"
 ```
 
 ## Timestamp Format
