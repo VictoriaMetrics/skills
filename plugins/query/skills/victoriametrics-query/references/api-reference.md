@@ -204,7 +204,7 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
 
 ### GET /api/v1/alerts — Active Alerts
 
-Returns all firing and pending alerts. No parameters.
+Returns all firing and pending alerts. No parameters. VictoriaMetrics serves it only with `-vmalert.proxyURL`; without that flag the list is empty, so ask vmalert at `$VM_ALERT_URL/api/v1/alerts`.
 
 Response:
 
@@ -234,7 +234,7 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
 
 ### GET /api/v1/rules — Alerting and Recording Rules
 
-Returns all configured rules. No parameters.
+Returns all configured rules. No parameters. VictoriaMetrics serves it only with `-vmalert.proxyURL`; without that flag the list is empty, so ask vmalert at `$VM_ALERT_URL/api/v1/rules`.
 
 Response:
 

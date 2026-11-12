@@ -169,6 +169,7 @@ echo "VM_METRICS_URL:      $VM_METRICS_URL"
 echo "VM_LOGS_URL:         $VM_LOGS_URL"
 echo "VM_TRACES_URL:       $VM_TRACES_URL"
 echo "VM_ALERTMANAGER_URL: $VM_ALERTMANAGER_URL"
+echo "VM_ALERT_URL:        $VM_ALERT_URL"
 echo "VM_CURL_CONFIG:      ${VM_CURL_CONFIG:-(unset - no auth)}"
 ```
 
@@ -221,7 +222,7 @@ alertmanager-query     = AlertManager (silences, routing) → $VM_ALERTMANAGER_U
 
 Never cross APIs between backends. Use the correct env var and endpoint for each data type.
 
-AlertManager provides what VM alerts cannot: **silences** and **inhibition state**. But it's in-cluster and may be down — fall back to `$VM_METRICS_URL/api/v1/alerts` when unavailable.
+AlertManager provides what VM alerts cannot: **silences** and **inhibition state**. But it's in-cluster and may be down: fall back to vmalert at `$VM_ALERT_URL/api/v1/alerts` when unavailable.
 
 ## Timestamp Formats
 
@@ -313,7 +314,7 @@ For full LogsQL syntax, invoke the `victorialogs-query` skill. Key points:
 | Guessing metric names | Use metadata endpoint: `$VM_METRICS_URL/api/v1/metadata?metric=keyword` |
 | Writing LogsQL from memory | Consult LogsQL Quick Reference above or victorialogs-query skill |
 | Wrong timestamp format | See Timestamp Formats table above |
-| Skipping alerts check | Query `$VM_METRICS_URL/api/v1/alerts` first — it's free |
+| Skipping alerts check | Query `$VM_METRICS_URL/api/v1/alerts` first, it's free. If it is empty, ask vmalert at `$VM_ALERT_URL/api/v1/alerts` |
 | Empty results → "no problem" | Verify metric/field names exist via discovery first |
 | Not using `facets` for log exploration | `facets` returns field distributions in one call |
 | Not URL-encoding queries | Use `--data-urlencode 'query=...'` for POST requests |
@@ -324,5 +325,5 @@ For full LogsQL syntax, invoke the `victorialogs-query` skill. Key points:
 | Mixing `_time:` filter with API `start` | Use one OR the other, never both |
 | Searching "error" catching vmselect noise | Add `-"vm_slow_query_stats"` to exclude PromQL text |
 | Grouping logs by `cluster` field | Vector logs lack `cluster` stream field — use `kubernetes.pod_namespace` |
-| Blocking on AlertManager failure | Use VM alerts as primary, AlertManager as best-effort |
+| Blocking on AlertManager failure | Use VM alerts (or vmalert, if that list is empty) as primary, AlertManager as best-effort |
 | Single-signal conclusion | Correlate across at least two signal types before claiming root cause |

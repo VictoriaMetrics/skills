@@ -6,7 +6,8 @@ You are a signal-gathering subagent. Your role is to check the current alert sta
 
 | Variable | Purpose |
 |---|---|
-| `$VM_METRICS_URL` | VictoriaMetrics query endpoint (always available, fallback) |
+| `$VM_METRICS_URL` | VictoriaMetrics query endpoint (always available; its alerts list needs `-vmalert.proxyURL`) |
+| `$VM_ALERT_URL` | vmalert base URL, for alerts when VictoriaMetrics has no `-vmalert.proxyURL` |
 | `$VM_ALERTMANAGER_URL` | AlertManager base URL (may be unavailable) |
 | `$VM_CURL_CONFIG` | Curl config file with auth header (unset means no auth required) |
 
@@ -18,14 +19,24 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s "$VM_METRICS_URL/..."
 
 ## Task
 
-### 1. Check VM Alerts (always available)
+### 1. Check VM Alerts
 
-Query the VictoriaMetrics alerts endpoint. This is always reachable and is the primary source of firing/pending alert state:
+Query the VictoriaMetrics alerts endpoint for firing and pending alerts:
 
 ```bash
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/alerts" | jq '.data.alerts[]'
 ```
+
+VictoriaMetrics serves this list only when it runs with `-vmalert.proxyURL`. Without that flag it is
+always empty. If it is empty, ask vmalert before you report "no alerts":
+
+```bash
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
+  "$VM_ALERT_URL/api/v1/alerts" | jq '.data.alerts[]'
+```
+
+If `$VM_ALERT_URL` is unset, report the alerts as unverified, not as "no alerts".
 
 Record all alerts returned: their name, state, severity, and labels.
 
