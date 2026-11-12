@@ -74,7 +74,7 @@ Stop here if the feature is not available. The rest of the workflow depends on i
 
 ### Step 1: Get all never-queried metric names
 
-These are metrics with `queryRequests: 0` — tracked but never fetched by any query, dashboard, alert rule, or recording rule.
+These are metrics with `queryRequestsCount: 0`: no query fetched them. A rule whose filter matches no series does not count, so check the rules in Step 6.
 
 Use a high limit to capture all of them — the default 1000 is often not enough:
 
@@ -148,7 +148,25 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
 
 You should already have these numbers from Step 2. If any prefix groups are missing counts, query them now — remembering to count only the specific never-queried metric names within each group (see the WRONG vs CORRECT pattern in Step 2).
 
-### Step 6: Categorize unused metrics
+### Step 6: Cross-check against alerting and recording rules
+
+A rule does not update usage stats while its filter matches no series, for example an alert on `errors_total{code="500"}` before the first 500. So a never-queried metric can still feed an alert.
+
+```bash
+RULES=$(mktemp)
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
+  "$VM_METRICS_URL/api/v1/rules" | jq -r '.data.groups[].rules[].query' > "$RULES"
+# VictoriaMetrics returns an empty list without -vmalert.proxyURL. Then ask vmalert:
+if [ ! -s "$RULES" ] && [ -n "$VM_ALERT_URL" ]; then
+  curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf \
+    "$VM_ALERT_URL/api/v1/rules" | jq -r '.data.groups[].rules[].query' > "$RULES"
+fi
+if [ -s "$RULES" ]; then echo "rule queries: $(grep -c . "$RULES")"; else echo "UNVERIFIED: no rules list"; fi
+```
+
+Move every never-queried metric that appears in a rule query (`grep -Fw -- '<metric_name>' "$RULES"`) out of the drop candidates. This search does not find a rule that selects names by regex (`{__name__=~"..."}`), so check those rules by hand. On `UNVERIFIED`, report every candidate as unverified.
+
+### Step 7: Categorize unused metrics
 
 Group the active unused metrics into categories to make the report actionable. Common categories:
 
@@ -196,6 +214,8 @@ Present findings in this format:
 
 ### Recommended Actions
 
+List the metrics that a rule uses, and the unverified ones, in their own section. Leave them out of the drop rules and the impact estimate.
+
 For each category of unused metrics, suggest one of these actions:
 
 **1. Drop at vmagent via `metric_relabel_configs`** (preferred for metrics you're confident are unused):
@@ -230,7 +250,7 @@ metric_relabel_configs:
 Always communicate these caveats:
 
 - **Start with a test period**: Before permanently dropping metrics, use `drop` rules on a staging vmagent to verify nothing breaks.
-- **Check alert rules and recording rules**: Metrics queried only by recording rules or alerts may show low `queryRequests` counts but are still essential. Cross-reference with `api/v1/rules` output. VictoriaMetrics serves it only with `-vmalert.proxyURL`, so if it returns an empty list, use `$VM_ALERT_URL/api/v1/rules`.
+- **Check alert rules and recording rules**: Metrics queried only by recording rules or alerts may show low `queryRequestsCount` values but are still essential. Cross-reference with `api/v1/rules` output (Step 6). VictoriaMetrics serves it only with `-vmalert.proxyURL`, so if it returns an empty list, use `$VM_ALERT_URL/api/v1/rules`.
 - **Dashboard queries aren't tracked until viewed**: A metric used in a Grafana dashboard that nobody opened during the collection window will appear as "unused." Consider querying Grafana's API for dashboard definitions to cross-reference.
 - **Some metrics are queried seasonally**: Monthly or quarterly reports will show low query counts. The longer the collection window, the more reliable the results.
 - **Never drop `up` or meta-metrics**: Metrics like `up`, `scrape_duration_seconds`, `scrape_samples_scraped` are essential for monitoring health even if rarely queried directly.
