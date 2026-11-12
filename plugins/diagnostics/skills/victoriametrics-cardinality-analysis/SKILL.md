@@ -128,6 +128,7 @@ is NOT safe to drop — it's queried indirectly.
 **Return**: Unused metrics with cross-reference against alert rules. Flag each as:
 
 - **safe to drop**: never queried AND not in any rule
+- **unverified**: never queried, but the rules could not be checked (empty list and `$VM_ALERT_URL` unset or unreachable). Never call these safe to drop.
 - **used by rules only**: never queried by dashboards but referenced in rules — verify intent
 - **rarely used**: low query count, may be accessed infrequently (e.g., monthly reports)
 
