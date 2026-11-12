@@ -31,6 +31,8 @@ Uses the same env vars as the `victoriametrics-query` skill:
 # $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
 #   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
 #   No auth:   leave unset (defaults to /dev/null)
+# $VM_ALERT_URL - vmalert base URL, for the rules cross-check
+#   Example: export VM_ALERT_URL="http://localhost:8880"
 ```
 
 ## Workflow
@@ -116,6 +118,9 @@ Note this in the return and proceed — the analysis can still work with TSDB st
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/rules" | jq '[.data.groups[].rules[].query]'
 ```
+
+An empty list does not mean that no rule uses the metric. VictoriaMetrics serves `/api/v1/rules` only
+when it runs with `-vmalert.proxyURL`. Without that flag, query vmalert at `$VM_ALERT_URL/api/v1/rules`.
 
 Extract metric names from rule queries. Any "unused" metric that appears in an alert/recording rule
 is NOT safe to drop — it's queried indirectly.
@@ -456,7 +461,7 @@ gauges produces nonsensical running sums.
 
 | Mistake | Fix |
 |---------|-----|
-| Dropping a metric used by alerts | Always cross-check `/api/v1/rules` before dropping |
+| Dropping a metric used by alerts | Always cross-check `/api/v1/rules` before dropping (vmalert's, if VictoriaMetrics returns an empty list) |
 | `drop_input: true` without testing | Verify aggregation output matches expectations first |
 | Stream aggregating gauges with `total` | Use `last`, `avg`, or `sum_samples` for gauges |
 | Forgetting `keep_metric_names: true` | Without it, output gets long auto-generated suffix |

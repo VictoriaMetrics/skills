@@ -149,7 +149,7 @@ VM_METRICS_URL        # VictoriaMetrics query endpoint (e.g., http://localhost:8
 VM_LOGS_URL           # VictoriaLogs endpoint (e.g., http://localhost:9428)
 VM_TRACES_URL         # VictoriaTraces with /select/jaeger prefix (e.g., http://localhost:10428/select/jaeger)
 VM_ALERTMANAGER_URL   # AlertManager endpoint (optional)
-VM_ALERT_URL          # vmalert endpoint, the fallback when AlertManager is down (e.g., http://localhost:8880)
+VM_ALERT_URL          # vmalert endpoint, for alerts and rules (e.g., http://localhost:8880)
 VM_ANOMALY_URL        # vmanomaly endpoint, including path prefix if configured (e.g., http://localhost:8490)
 VM_CURL_CONFIG        # Path to a mode-0600 curl config file containing the auth header
                       # (leave unset for unauthenticated instances - defaults to /dev/null)

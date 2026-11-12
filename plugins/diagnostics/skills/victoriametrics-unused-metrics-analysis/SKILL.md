@@ -26,6 +26,8 @@ Uses the same env vars as the `victoriametrics-query` skill:
 # $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
 #   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
 #   No auth:   leave unset (defaults to /dev/null)
+# $VM_ALERT_URL - vmalert base URL, for the rules cross-check
+#   Example: export VM_ALERT_URL="http://localhost:8880"
 ```
 
 ## How It Works
@@ -228,7 +230,7 @@ metric_relabel_configs:
 Always communicate these caveats:
 
 - **Start with a test period**: Before permanently dropping metrics, use `drop` rules on a staging vmagent to verify nothing breaks.
-- **Check alert rules and recording rules**: Metrics queried only by recording rules or alerts may show low `queryRequests` counts but are still essential. Cross-reference with `api/v1/rules` output.
+- **Check alert rules and recording rules**: Metrics queried only by recording rules or alerts may show low `queryRequests` counts but are still essential. Cross-reference with `api/v1/rules` output. VictoriaMetrics serves it only with `-vmalert.proxyURL`, so if it returns an empty list, use `$VM_ALERT_URL/api/v1/rules`.
 - **Dashboard queries aren't tracked until viewed**: A metric used in a Grafana dashboard that nobody opened during the collection window will appear as "unused." Consider querying Grafana's API for dashboard definitions to cross-reference.
 - **Some metrics are queried seasonally**: Monthly or quarterly reports will show low query counts. The longer the collection window, the more reliable the results.
 - **Never drop `up` or meta-metrics**: Metrics like `up`, `scrape_duration_seconds`, `scrape_samples_scraped` are essential for monitoring health even if rarely queried directly.

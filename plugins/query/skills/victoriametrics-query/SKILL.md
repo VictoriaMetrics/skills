@@ -22,6 +22,8 @@ Query VictoriaMetrics HTTP API directly via curl. Covers instant/range queries, 
 # $VM_CURL_CONFIG - curl config file with auth header (unset if no auth is required)
 #   With auth: export VM_CURL_CONFIG="$HOME/.config/victoriametrics/curl.conf"
 #   No auth:   leave unset (defaults to /dev/null)
+# $VM_ALERT_URL - vmalert base URL, for alerts and rules
+#   Example: export VM_ALERT_URL="http://localhost:8880"
 ```
 
 ## Auth Pattern
@@ -108,6 +110,10 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/rules" | jq '.data.groups[]'
 ```
+
+VictoriaMetrics serves these two only when it runs with `-vmalert.proxyURL`. Without that flag both
+return an empty list, which does not mean there are no alerts or rules. Ask vmalert directly instead:
+`$VM_ALERT_URL/api/v1/alerts` and `$VM_ALERT_URL/api/v1/rules`.
 
 ### Instance Diagnostics
 
