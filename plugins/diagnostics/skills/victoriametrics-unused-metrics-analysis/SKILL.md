@@ -8,7 +8,7 @@ description: >
   are never queried. Also trigger when the user mentions "metric cleanup", "unused series",
   "what metrics can I drop", "metric optimization", "wasted ingestion", or wants to reduce
   VictoriaMetrics resource consumption by eliminating unnecessary metrics.
-allowed-tools: Bash(curl:*), Bash(jq:*)
+allowed-tools: Bash(curl:*), Bash(jq:*), Bash(grep:*)
 ---
 
 # Find Unused Metrics in VictoriaMetrics
@@ -153,7 +153,6 @@ You should already have these numbers from Step 2. If any prefix groups are miss
 A rule does not update usage stats while its filter matches no series, for example an alert on `errors_total{code="500"}` before the first 500. So a never-queried metric can still feed an alert.
 
 ```bash
-rm -f "${TMPDIR:-/tmp}/vm-rule-queries.txt"
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/rules" | jq -r '.data.groups[].rules[].query' > "${TMPDIR:-/tmp}/vm-rule-queries.txt"
 # VictoriaMetrics returns an empty list without -vmalert.proxyURL. Then ask vmalert:
@@ -164,11 +163,11 @@ fi
 if [ -s "${TMPDIR:-/tmp}/vm-rule-queries.txt" ]; then echo "rules list found"; else echo "UNVERIFIED: no rules list"; fi
 ```
 
-Move every never-queried metric that appears in a rule query (`grep -Fw -- '<metric_name>' "${TMPDIR:-/tmp}/vm-rule-queries.txt"`) out of the drop candidates. This search does not find a rule that selects names by regex (`{__name__=~"..."}`), so check those rules by hand. On `UNVERIFIED`, report every candidate as unverified.
+Move every never-queried metric that appears in a rule query (`grep -Fw -- '<metric_name>' "${TMPDIR:-/tmp}/vm-rule-queries.txt"`) out of the drop candidates. This search does not find a rule that selects names by regex (`{__name__=~"..."}`), so check those rules by hand. On `UNVERIFIED`, report every candidate as unverified. If the user confirms that no alerting or recording rules exist, an empty list counts as checked.
 
 ### Step 7: Categorize unused metrics
 
-Group the active unused metrics into categories to make the report actionable. Common categories:
+Group the active unused metrics that are left after Step 6 into categories to make the report actionable. Compute the impact estimate from these metrics only. Common categories:
 
 - **Kubernetes infrastructure metrics** (e.g., `kube_*`, `container_*`, `node_*` prefixes that aren't used in any dashboard or alert)
 - **Application metrics** (custom app metrics nobody built dashboards for)

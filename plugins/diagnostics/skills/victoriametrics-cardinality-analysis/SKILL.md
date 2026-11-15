@@ -129,7 +129,7 @@ does not name the metric, so check those rules by hand.
 **Return**: Unused metrics with cross-reference against alert rules. Flag each as:
 
 - **safe to drop**: never queried AND not in any rule
-- **unverified**: never queried, but no rules list could be read. Never call these safe to drop.
+- **unverified**: never queried, but no rules list could be read. Never call these safe to drop. If the user confirms that no alerting or recording rules exist, an empty list counts as checked.
 - **used by rules only**: never queried by dashboards but referenced in rules — verify intent
 - **rarely used**: low query count, may be accessed infrequently (e.g., monthly reports)
 
@@ -262,12 +262,13 @@ Use this template:
 | Stats tracking since | <date> |
 
 ### 1. Unused Metrics
-**Potential savings: ~X series (Y% of total)**
+**Potential savings: ~X series (Y% of total), from the "Drop" rows only**
 
 | Metric | Series | Last Queried | In Alert Rules | Action |
 |--------|--------|-------------|----------------|--------|
 | ... | ... | never | no | Drop |
 | ... | ... | never | yes — verify | Check rule |
+| ... | ... | never | unknown: no rules list | Keep |
 
 <details>
 <summary>Relabeling config to drop unused metrics</summary>
@@ -276,7 +277,7 @@ Use this template:
 # Add to vmagent metric_relabel_configs (VMServiceScrape or global)
 metric_relabel_configs:
   - source_labels: [__name__]
-    regex: "metric1|metric2|metric3"
+    regex: "metric1|metric2|metric3"  # the "Drop" rows only
     action: drop
 ​```
 </details>
@@ -358,7 +359,7 @@ metric_relabel_configs:
 | **Total** | **X** | **Y%** | |
 
 ### Implementation Priority
-1. **[Low effort]** Drop unused metrics — pure relabeling, no data loss risk
+1. **[Low effort]** Drop the unused metrics marked "Drop": relabeling only
 2. **[Low effort]** Drop labels that should never be in metrics (IDs, messages, SQL)
 3. **[Medium effort]** Stream aggregation for high-cardinality HTTP/app metrics
 4. **[Medium effort]** Histogram bucket reduction
