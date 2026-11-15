@@ -153,18 +153,18 @@ You should already have these numbers from Step 2. If any prefix groups are miss
 A rule does not update usage stats while its filter matches no series, for example an alert on `errors_total{code="500"}` before the first 500. So a never-queried metric can still feed an alert.
 
 ```bash
-RULES=$(mktemp)
+rm -f "${TMPDIR:-/tmp}/vm-rule-queries.txt"
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
-  "$VM_METRICS_URL/api/v1/rules" | jq -r '.data.groups[].rules[].query' > "$RULES"
+  "$VM_METRICS_URL/api/v1/rules" | jq -r '.data.groups[].rules[].query' > "${TMPDIR:-/tmp}/vm-rule-queries.txt"
 # VictoriaMetrics returns an empty list without -vmalert.proxyURL. Then ask vmalert:
-if [ ! -s "$RULES" ] && [ -n "$VM_ALERT_URL" ]; then
+if [ ! -s "${TMPDIR:-/tmp}/vm-rule-queries.txt" ] && [ -n "$VM_ALERT_URL" ]; then
   curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf \
-    "$VM_ALERT_URL/api/v1/rules" | jq -r '.data.groups[].rules[].query' > "$RULES"
+    "$VM_ALERT_URL/api/v1/rules" | jq -r '.data.groups[].rules[].query' > "${TMPDIR:-/tmp}/vm-rule-queries.txt"
 fi
-if [ -s "$RULES" ]; then echo "rule queries: $(grep -c . "$RULES")"; else echo "UNVERIFIED: no rules list"; fi
+if [ -s "${TMPDIR:-/tmp}/vm-rule-queries.txt" ]; then echo "rules list found"; else echo "UNVERIFIED: no rules list"; fi
 ```
 
-Move every never-queried metric that appears in a rule query (`grep -Fw -- '<metric_name>' "$RULES"`) out of the drop candidates. This search does not find a rule that selects names by regex (`{__name__=~"..."}`), so check those rules by hand. On `UNVERIFIED`, report every candidate as unverified.
+Move every never-queried metric that appears in a rule query (`grep -Fw -- '<metric_name>' "${TMPDIR:-/tmp}/vm-rule-queries.txt"`) out of the drop candidates. This search does not find a rule that selects names by regex (`{__name__=~"..."}`), so check those rules by hand. On `UNVERIFIED`, report every candidate as unverified.
 
 ### Step 7: Categorize unused metrics
 

@@ -123,12 +123,13 @@ An empty list does not mean that no rule uses the metric. VictoriaMetrics serves
 when it runs with `-vmalert.proxyURL`. Without that flag, query vmalert at `$VM_ALERT_URL/api/v1/rules`.
 
 Extract metric names from rule queries. Any "unused" metric that appears in an alert/recording rule
-is NOT safe to drop — it's queried indirectly.
+is NOT safe to drop: it's queried indirectly. A rule that selects names by regex (`{__name__=~"..."}`)
+does not name the metric, so check those rules by hand.
 
 **Return**: Unused metrics with cross-reference against alert rules. Flag each as:
 
 - **safe to drop**: never queried AND not in any rule
-- **unverified**: never queried, but the rules could not be checked (empty list and `$VM_ALERT_URL` unset or unreachable). Never call these safe to drop.
+- **unverified**: never queried, but no rules list could be read. Never call these safe to drop.
 - **used by rules only**: never queried by dashboards but referenced in rules — verify intent
 - **rarely used**: low query count, may be accessed infrequently (e.g., monthly reports)
 
@@ -202,6 +203,7 @@ Cross-reference metric usage stats with TSDB series counts:
 
 - **Drop candidates**: `queryRequestsCount=0`, not in any alert/recording rule, >100 series
 - **Verify candidates**: `queryRequestsCount=0` but referenced in rules — check if rule is still needed
+- **Unverified**: `queryRequestsCount=0` and no rules list could be read: never a drop candidate
 - **Low-priority**: `queryRequestsCount≤5` with few series — not worth the config churn
 
 Sort by series count descending — the biggest unused metrics are the biggest wins.
