@@ -163,11 +163,11 @@ fi
 if [ -s "${TMPDIR:-/tmp}/vm-rule-queries.txt" ]; then echo "rules list found"; else echo "UNVERIFIED: no rules list"; fi
 ```
 
-Move every never-queried metric that appears in a rule query (`grep -Fw -- '<metric_name>' "${TMPDIR:-/tmp}/vm-rule-queries.txt"`) out of the drop candidates. This search does not find a rule that selects names by regex (`{__name__=~"..."}`), so check those rules by hand. On `UNVERIFIED`, report every candidate as unverified. If the user confirms that no alerting or recording rules exist, an empty list counts as checked.
+Move every never-queried metric that appears in a rule query (`grep -Fw -- '<metric_name>' "${TMPDIR:-/tmp}/vm-rule-queries.txt"`) out of the drop candidates. This search does not find a rule that selects names by regex (`{__name__=~"..."}`), so treat every never-queried metric that the regex matches as used by rules. On `UNVERIFIED`, report every candidate as unverified.
 
 ### Step 7: Categorize unused metrics
 
-Group the active unused metrics that are left after Step 6 into categories to make the report actionable. Compute the impact estimate from these metrics only. Common categories:
+Group the active unused metrics that are left after Step 6 into categories to make the report actionable. Common categories:
 
 - **Kubernetes infrastructure metrics** (e.g., `kube_*`, `container_*`, `node_*` prefixes that aren't used in any dashboard or alert)
 - **Application metrics** (custom app metrics nobody built dashboards for)

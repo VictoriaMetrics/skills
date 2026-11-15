@@ -124,12 +124,12 @@ when it runs with `-vmalert.proxyURL`. Without that flag, query vmalert at `$VM_
 
 Extract metric names from rule queries. Any "unused" metric that appears in an alert/recording rule
 is NOT safe to drop: it's queried indirectly. A rule that selects names by regex (`{__name__=~"..."}`)
-does not name the metric, so check those rules by hand.
+does not name the metric, so treat every never-queried metric that the regex matches as used by rules.
 
 **Return**: Unused metrics with cross-reference against alert rules. Flag each as:
 
 - **safe to drop**: never queried AND not in any rule
-- **unverified**: never queried, but no rules list could be read. Never call these safe to drop. If the user confirms that no alerting or recording rules exist, an empty list counts as checked.
+- **unverified**: never queried, but no rules list could be read. Never call these safe to drop.
 - **used by rules only**: never queried by dashboards but referenced in rules — verify intent
 - **rarely used**: low query count, may be accessed infrequently (e.g., monthly reports)
 
@@ -277,7 +277,7 @@ Use this template:
 # Add to vmagent metric_relabel_configs (VMServiceScrape or global)
 metric_relabel_configs:
   - source_labels: [__name__]
-    regex: "metric1|metric2|metric3"  # the "Drop" rows only
+    regex: "metric1|metric2|metric3"
     action: drop
 ​```
 </details>
