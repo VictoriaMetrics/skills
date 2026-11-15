@@ -105,7 +105,7 @@ Wrapped in `{"status":"success","data":{"alerts":[...]}}`.
 | `name`, `state` | alert name, and `pending` or `firing` |
 | `value` | the sample value which triggered it, as a string |
 | `activeAt` | when the condition first became true, **not** when the alert fired. The alert fires `for` after this |
-| `labels` | the rule's labels plus `alertname`, `alertgroup` and the series labels |
+| `labels` | the rule's labels plus `alertname`, `alertgroup` (unless `-disableAlertgroupLabel`) and the series labels |
 | `annotations` | **rendered**, so this is where a broken `dashboard` link shows up |
 | `expression` | the expression text |
 | `id`, `rule_id`, `group_id` | ids for `/api/v1/alert` |
@@ -113,8 +113,7 @@ Wrapped in `{"status":"success","data":{"alerts":[...]}}`.
 | `restored` | whether the state was restored from remote write on restart |
 | `stabilizing` | whether `keep_firing_for` is holding it |
 
-`alertgroup` is added automatically and its value is the group name, unless vmalert runs with
-`-disableAlertgroupLabel`.
+`alertgroup` is the group name.
 
 ## GET /api/v1/alert
 

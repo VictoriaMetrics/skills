@@ -34,7 +34,7 @@ writes only to a scratch VictoriaMetrics.
 #   single: export VM_METRICS_URL="http://localhost:8428"
 #   cluster: export VM_METRICS_URL="https://vmselect.example.com/select/0/prometheus"
 # $VM_LOGS_URL    - VictoriaLogs base URL, for a vlogs rule
-# $VM_CURL_CONFIG - curl config file with an auth header. Leave unset for a local instance.
+# $VM_CURL_CONFIG - curl config file with an auth header. Leave unset if no auth is required.
 ```
 
 Log rules often run on a separate vmalert. Point `$VM_ALERT_URL` at the vmalert that runs the rule.
@@ -123,7 +123,8 @@ for each.
    Exit code 0 means the file is valid.
 
 2. **Unit-test** it on made-up series. A test says when the alert fires, with which labels and
-   annotations, and covers `for` and `keep_firing_for`. See `references/unittest.md`:
+   annotations, and covers `for` and `keep_firing_for`. The test format is in
+   [vmalert-tool unit testing](https://docs.victoriametrics.com/victoriametrics/vmalert-tool/#unit-testing-for-rules):
 
    ```bash
    vmalert-tool unittest --files=rules_test.yml
