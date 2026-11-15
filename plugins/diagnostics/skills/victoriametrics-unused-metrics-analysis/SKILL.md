@@ -201,6 +201,9 @@ Present findings in this format:
 |---|---|---|
 | `prefix_*` | ~X,000 | Drop via relabel |
 
+### Used by Rules or Unverified (Keep)
+[Never-queried metrics that a rule uses (Step 6). On `UNVERIFIED`, every never-queried metric goes here.]
+
 ### Rarely-Queried Metrics
 [Similar table, but note last query time from lastRequestTimestamp]
 
@@ -208,13 +211,13 @@ Present findings in this format:
 [Brief list of prefix groups with 0 active series — these are from decommissioned sources and will expire with retention]
 
 ### Estimated Impact
-- Dropping all never-queried active metrics would eliminate ~[N] series ([X]% of total active)
+- Dropping the never-queried active metrics that no rule uses would eliminate ~[N] series ([X]% of total active)
 - Top 3 categories alone account for ~[M] series
 ```
 
 ### Recommended Actions
 
-List the metrics that a rule uses, and the unverified ones, in their own section. Leave them out of the drop rules and the impact estimate.
+Leave the metrics in "Used by Rules or Unverified" out of the drop rules.
 
 For each category of unused metrics, suggest one of these actions:
 
