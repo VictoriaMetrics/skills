@@ -125,8 +125,9 @@ when it runs with `-vmalert.proxyURL`. Without that flag, query vmalert at `$VM_
 Extract metric names from rule queries. Any "unused" metric that appears in an alert/recording rule
 is NOT safe to drop: it's queried indirectly. A rule that selects names by regex (`{__name__=~"..."}`)
 does not name the metric, so treat every never-queried metric that the regex matches as used by rules.
-The regex must match the whole name, as in PromQL. If neither VictoriaMetrics nor vmalert returns a
-rule, flag the never-queried metrics as unverified.
+The regex must match the whole name, as in PromQL. For `!~` or `!=`, the names that do not match are
+the used ones. If neither VictoriaMetrics nor vmalert returns a rule, flag the never-queried metrics as
+unverified.
 
 **Return**: Unused metrics with cross-reference against alert rules. Flag each as:
 

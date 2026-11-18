@@ -74,7 +74,7 @@ Stop here if the feature is not available. The rest of the workflow depends on i
 
 ### Step 1: Get all never-queried metric names
 
-These are metrics with `queryRequestsCount: 0`: no query fetched them. A rule whose filter matches no series does not count, so check the rules in Step 6.
+These are metrics with `queryRequestsCount: 0`: no query fetched them. A rule counts as a query only once its filter matches a series, so check the rules in Step 6.
 
 Use a high limit to capture all of them — the default 1000 is often not enough:
 
@@ -153,22 +153,22 @@ You should already have these numbers from Step 2. If any prefix groups are miss
 A rule does not update usage stats while its filter matches no series, for example an alert on `errors_total{code="500"}` before the first 500. So a never-queried metric can still feed an alert.
 
 ```bash
-RULES=$(curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf \
-  "$VM_METRICS_URL/api/v1/rules" | jq -c '[.data.groups[].rules[].query]')
-# VictoriaMetrics returns an empty list without -vmalert.proxyURL. Then ask vmalert:
-if [ "${RULES:-[]}" = "[]" ] && [ -n "$VM_ALERT_URL" ]; then
+# VictoriaMetrics returns no rules without -vmalert.proxyURL, so vmalert is asked next.
+for url in "$VM_METRICS_URL" "$VM_ALERT_URL"; do
+  [ -n "$url" ] || continue
   RULES=$(curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf \
-    "$VM_ALERT_URL/api/v1/rules" | jq -c '[.data.groups[].rules[].query]')
-fi
+    "$url/api/v1/rules" | jq -c '[.data.groups[].rules[].query]')
+  [ "${RULES:-[]}" != "[]" ] && break
+done
 if [ "${RULES:-[]}" = "[]" ]; then
   echo "UNVERIFIED: no rules list"
 else
-  echo "$RULES" | jq -r '"Names in rule queries: " + ([.[] | scan("[A-Za-z_:][A-Za-z0-9_:]*")] | unique | join(" "))'
-  echo "$RULES" | jq -r '.[] | select(test("__name__")) | "Selects names by regex: " + .'
+  jq -rn --argjson q "$RULES" '"Names in rule queries: " + ([$q[] | scan("[A-Za-z_:][A-Za-z0-9_:]*")] | unique | join(" "))'
+  jq -rn --argjson q "$RULES" '$q[] | select(test("__name__")) | "Selects names by regex: " + .'
 fi
 ```
 
-Move every never-queried metric whose exact name is in "Names in rule queries" out of the drop candidates. The other words in that list are labels and functions: ignore them. For each "Selects names by regex" line, treat every never-queried metric that the regex matches as used by rules. The regex must match the whole name, as in PromQL. On `UNVERIFIED`, report every candidate as unverified.
+Move every never-queried metric whose exact name is in "Names in rule queries" out of the drop candidates. The other words in that list are labels and functions: ignore them. For each "Selects names by regex" line, treat every never-queried metric that the regex matches as used by rules. The regex must match the whole name, as in PromQL. For `!~` or `!=`, the names that do not match are the used ones. Leave these metrics out of the series counts in the report. On `UNVERIFIED`, report every candidate as unverified. If more than one vmalert or tenant runs rules, ask the user whether this list covers all of them.
 
 ### Step 7: Categorize unused metrics
 
@@ -257,7 +257,7 @@ metric_relabel_configs:
 Always communicate these caveats:
 
 - **Start with a test period**: Before permanently dropping metrics, use `drop` rules on a staging vmagent to verify nothing breaks.
-- **Check alert rules and recording rules**: Metrics queried only by recording rules or alerts may show low `queryRequestsCount` values but are still essential. Cross-reference with `api/v1/rules` output (Step 6). VictoriaMetrics serves it only with `-vmalert.proxyURL`, so if it returns an empty list, use `$VM_ALERT_URL/api/v1/rules`.
+- **Check alert rules and recording rules**: see Step 6.
 - **Dashboard queries aren't tracked until viewed**: A metric used in a Grafana dashboard that nobody opened during the collection window will appear as "unused." Consider querying Grafana's API for dashboard definitions to cross-reference.
 - **Some metrics are queried seasonally**: Monthly or quarterly reports will show low query counts. The longer the collection window, the more reliable the results.
 - **Never drop `up` or meta-metrics**: Metrics like `up`, `scrape_duration_seconds`, `scrape_samples_scraped` are essential for monitoring health even if rarely queried directly.
