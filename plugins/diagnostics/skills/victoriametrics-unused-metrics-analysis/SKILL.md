@@ -8,7 +8,7 @@ description: >
   are never queried. Also trigger when the user mentions "metric cleanup", "unused series",
   "what metrics can I drop", "metric optimization", "wasted ingestion", or wants to reduce
   VictoriaMetrics resource consumption by eliminating unnecessary metrics.
-allowed-tools: Bash(curl:*), Bash(jq:*), Bash(grep:*)
+allowed-tools: Bash(curl:*), Bash(jq:*)
 ---
 
 # Find Unused Metrics in VictoriaMetrics
@@ -153,17 +153,22 @@ You should already have these numbers from Step 2. If any prefix groups are miss
 A rule does not update usage stats while its filter matches no series, for example an alert on `errors_total{code="500"}` before the first 500. So a never-queried metric can still feed an alert.
 
 ```bash
-curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
-  "$VM_METRICS_URL/api/v1/rules" | jq -r '.data.groups[].rules[].query' > "${TMPDIR:-/tmp}/vm-rule-queries.txt"
+RULES=$(curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf \
+  "$VM_METRICS_URL/api/v1/rules" | jq -c '[.data.groups[].rules[].query]')
 # VictoriaMetrics returns an empty list without -vmalert.proxyURL. Then ask vmalert:
-if [ ! -s "${TMPDIR:-/tmp}/vm-rule-queries.txt" ] && [ -n "$VM_ALERT_URL" ]; then
-  curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf \
-    "$VM_ALERT_URL/api/v1/rules" | jq -r '.data.groups[].rules[].query' > "${TMPDIR:-/tmp}/vm-rule-queries.txt"
+if [ "${RULES:-[]}" = "[]" ] && [ -n "$VM_ALERT_URL" ]; then
+  RULES=$(curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -sf \
+    "$VM_ALERT_URL/api/v1/rules" | jq -c '[.data.groups[].rules[].query]')
 fi
-if [ -s "${TMPDIR:-/tmp}/vm-rule-queries.txt" ]; then echo "rules list found"; else echo "UNVERIFIED: no rules list"; fi
+if [ "${RULES:-[]}" = "[]" ]; then
+  echo "UNVERIFIED: no rules list"
+else
+  echo "$RULES" | jq -r '"Names in rule queries: " + ([.[] | scan("[A-Za-z_:][A-Za-z0-9_:]*")] | unique | join(" "))'
+  echo "$RULES" | jq -r '.[] | select(test("__name__")) | "Selects names by regex: " + .'
+fi
 ```
 
-Move every never-queried metric that appears in a rule query (`grep -Fw -- '<metric_name>' "${TMPDIR:-/tmp}/vm-rule-queries.txt"`) out of the drop candidates. This search does not find a rule that selects names by regex (`{__name__=~"..."}`), so treat every never-queried metric that the regex matches as used by rules. On `UNVERIFIED`, report every candidate as unverified.
+Move every never-queried metric whose exact name is in "Names in rule queries" out of the drop candidates. The other words in that list are labels and functions: ignore them. For each "Selects names by regex" line, treat every never-queried metric that the regex matches as used by rules. The regex must match the whole name, as in PromQL. On `UNVERIFIED`, report every candidate as unverified.
 
 ### Step 7: Categorize unused metrics
 
