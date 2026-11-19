@@ -20,6 +20,8 @@ from ruamel.yaml.constructor import SafeConstructor
 from ruamel.yaml.error import YAMLError
 
 MAX_INPUT_BYTES = 8 * 1024 * 1024
+# First stable app release accepting explicit ESA acceptance without a license.
+MIN_EULA_VERSION = (1, 33, 0)
 
 
 class ArtifactConstructor(SafeConstructor):
@@ -67,6 +69,29 @@ def require_pin(image: str) -> None:
         or image.endswith(':latest')
     ):
         raise ValueError('Use explicit image versions or digests, not latest')
+
+
+def use_eula(spec: dict[str, Any]) -> bool:
+    """Acceptance is explicit; adapter support is verified against the pinned release."""
+    accepted = spec.get('accept_eula', False)
+    if not isinstance(accepted, bool):
+        raise ValueError('accept_eula must be a boolean')
+    if not accepted:
+        return False
+    image = spec['vmanomaly_image']
+    version = spec.get('vmanomaly_version') if '@sha256:' in image else image.rsplit(':', 1)[-1]
+    match = re.fullmatch(r'v?(\d+)\.(\d+)\.(\d+)(?:-dhi)?', version) if isinstance(version, str) else None
+    if not match or tuple(map(int, match.groups())) < MIN_EULA_VERSION:
+        raise ValueError('accept_eula requires a verified stable vmanomaly v1.33.0+ image version')
+    if spec['deployment'] in ('helm', 'operator'):
+        version_key = 'chart_version' if spec['deployment'] == 'helm' else 'operator_version'
+        if not spec.get(version_key) or spec.get('eula_verified_adapter_version') != spec[version_key]:
+            raise ValueError(
+                'Verify EULA-only support and set eula_verified_adapter_version to the pinned adapter version'
+            )
+    if spec.get('license_secret') or spec.get('license_secret_key'):
+        raise ValueError('Choose explicit EULA acceptance or a license Secret, not both')
+    return True
 
 
 def require_url(value: Any, field: str) -> None:
@@ -131,6 +156,7 @@ def render(
         require_url(url, f'{section} datasource URL')
     target = spec['deployment']
     require_pin(spec['vmanomaly_image'])
+    eula = use_eula(spec)
     fmt = config['writer'].get('metric_format', {'__name__': '$VAR', 'for': '$QUERY_KEY'})
     metric_pattern = fmt['__name__']
     if not metric_pattern.endswith('$VAR') or fmt.get('for') != '$QUERY_KEY':
@@ -147,7 +173,9 @@ def render(
             raise ValueError(f'Invalid artifact YAML in {field}; regenerate the artifact pair') from exc
         expected = config if field == 'config_yaml' else rules
         if parsed != expected:
-            raise ValueError(f'Artifact YAML in {field} differs from its structured object; regenerate the artifact pair')
+            raise ValueError(
+                f'Artifact YAML in {field} differs from its structured object; regenerate the artifact pair'
+            )
         files[filename] = content  # Preserve backend comments and draft instructions verbatim.
     files['anomaly-dashboard.json'] = encode(
         dashboard(
@@ -187,12 +215,12 @@ def render(
                 'services': {
                     'vmanomaly': {
                         'image': spec['vmanomaly_image'],
-                        'command': ['/config/vmanomaly.yaml'],
-                        'environment': {'VM_LICENSE_FILE': '/license'},
+                        'command': ['/config/vmanomaly.yaml'] + (['-eula'] if eula else []),
+                        **({} if eula else {'environment': {'VM_LICENSE_FILE': '/license'}}),
                         'volumes': [
                             './vmanomaly.yaml:/config/vmanomaly.yaml:ro',
-                            '${VMANOMALY_LICENSE_FILE:?set license path}:/license:ro',
-                        ],
+                        ]
+                        + ([] if eula else ['${VMANOMALY_LICENSE_FILE:?set license path}:/license:ro']),
                     },
                     'vmalert': {
                         'image': spec['vmalert_image'],
@@ -216,9 +244,15 @@ def render(
             {
                 'config': config,
                 'image': {'repository': repository, 'tag': tag},
-                'license': {
-                    'secret': {'name': spec['license_secret'], 'key': spec.get('license_secret_key', 'license')}
-                },
+                **(
+                    {'extraArgs': {'eula': 'true'}}
+                    if eula
+                    else {
+                        'license': {
+                            'secret': {'name': spec['license_secret'], 'key': spec.get('license_secret_key', 'license')}
+                        }
+                    }
+                ),
                 'resources': spec.get('resources', {}),
             }
         )
@@ -249,9 +283,18 @@ def render(
                         **({'tenantID': writer['tenant_id']} if writer.get('tenant_id') else {}),
                     },
                     'configRawYaml': files['vmanomaly.yaml'],
-                    'license': {
-                        'keyRef': {'name': spec['license_secret'], 'key': spec.get('license_secret_key', 'license')}
-                    },
+                    **(
+                        {'extraArgs': {'eula': 'true'}}
+                        if eula
+                        else {
+                            'license': {
+                                'keyRef': {
+                                    'name': spec['license_secret'],
+                                    'key': spec.get('license_secret_key', 'license'),
+                                }
+                            }
+                        }
+                    ),
                     'resources': spec.get('resources', {}),
                 },
             }

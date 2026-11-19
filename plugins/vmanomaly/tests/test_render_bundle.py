@@ -62,8 +62,10 @@ class BundleTests(unittest.TestCase):
     def test_yaml12_scalars_preserve_artifact_text(self):
         labels = {'on': 'off', 'yes': 'no', 'date': '2026-10-28', 'time': '12:34:56'}
         self.artifacts['alert_rules'] = {'groups': [], 'labels': labels, 'enabled': True, 'count': 12, 'ratio': 1000.0}
-        content = ('# Keep this comment\ngroups: []\nlabels: {on: off, yes: no, date: 2026-10-28, time: 12:34:56}\n'
-                   'enabled: true\ncount: 012\nratio: 1e3\n')
+        content = (
+            '# Keep this comment\ngroups: []\nlabels: {on: off, yes: no, date: 2026-10-28, time: 12:34:56}\n'
+            'enabled: true\ncount: 012\nratio: 1e3\n'
+        )
         self.artifacts['alerts_yaml'] = content
         files = module.render(self.artifacts, self.spec, self.anomaly, self.monitoring)
         self.assertEqual(files['alerts.yaml'], content)
@@ -116,6 +118,64 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(manifest['warnings'], ['fixture'])
         self.assertEqual(files, self.render())
 
+    def test_eula_compose_and_legacy_default(self):
+        self.spec.update(vmanomaly_image='victoriametrics/vmanomaly:v1.33.0-dhi', accept_eula=True)
+        service = json.loads(self.render()['compose.yaml'])['services']['vmanomaly']
+        self.assertEqual(service['command'], ['/config/vmanomaly.yaml', '-eula'])
+        self.assertNotIn('environment', service)
+        self.assertEqual(service['volumes'], ['./vmanomaly.yaml:/config/vmanomaly.yaml:ro'])
+        self.spec['accept_eula'] = False
+        service = json.loads(self.render()['compose.yaml'])['services']['vmanomaly']
+        self.assertEqual(service['environment'], {'VM_LICENSE_FILE': '/license'})
+        self.assertEqual(len(service['volumes']), 2)
+
+    def test_eula_rejects_old_unknown_and_implicit_acceptance(self):
+        for image in ('v1.32.0', 'v1.33.0-rc1', 'custom'):
+            with self.subTest(image=image):
+                self.spec.update(vmanomaly_image='example/anomaly:' + image, accept_eula=True)
+                with self.assertRaisesRegex(ValueError, 'v1.33.0'):
+                    self.render()
+        self.spec.update(vmanomaly_image='example/anomaly:v1.33.0', accept_eula='true')
+        with self.assertRaisesRegex(ValueError, 'boolean'):
+            self.render()
+        self.spec.update(accept_eula=True, license_secret='existing')
+        with self.assertRaisesRegex(ValueError, 'not both'):
+            self.render()
+
+    def test_eula_digest_requires_verified_version(self):
+        self.spec.update(vmanomaly_image='example/anomaly@sha256:' + 'a' * 64, accept_eula=True)
+        with self.assertRaisesRegex(ValueError, 'v1.33.0'):
+            self.render()
+        self.spec['vmanomaly_version'] = '1.33.0'
+        self.assertIn('-eula', json.loads(self.render()['compose.yaml'])['services']['vmanomaly']['command'])
+
+    def test_eula_kubernetes_requires_matching_adapter_verification(self):
+        for mode in ('helm', 'operator'):
+            with self.subTest(mode=mode):
+                self.spec.update(
+                    deployment=mode,
+                    vmanomaly_image='example/anomaly:v1.33.0',
+                    accept_eula=True,
+                    chart_version='fixture-chart',
+                    operator_version='fixture-operator',
+                    namespace='monitoring',
+                    rule_labels={},
+                )
+                self.spec.pop('eula_verified_adapter_version', None)
+                for verified in (None, 'different-version'):
+                    self.spec['eula_verified_adapter_version'] = verified
+                    with self.assertRaisesRegex(ValueError, 'Verify EULA-only'):
+                        self.render()
+                self.spec['eula_verified_adapter_version'] = self.spec[
+                    'chart_version' if mode == 'helm' else 'operator_version'
+                ]
+                files = self.render()
+                result = json.loads(files['values.yaml'] if mode == 'helm' else files['vmanomaly-resource.yaml'])
+                if mode == 'operator':
+                    result = result['spec']
+                self.assertEqual(result['extraArgs'], {'eula': 'true'})
+                self.assertNotIn('license', result)
+
     def test_kubernetes_modes(self):
         for mode in ['helm', 'operator']:
             with self.subTest(mode=mode):
@@ -130,11 +190,13 @@ class BundleTests(unittest.TestCase):
                 files = self.render()
                 if mode == 'helm':
                     self.assertEqual(json.loads(files['values.yaml'])['config'], self.artifacts['config'])
+                    self.assertEqual(json.loads(files['values.yaml'])['license']['secret']['name'], 'existing-license')
                 else:
                     cr = json.loads(files['vmanomaly-resource.yaml'])
                     self.assertEqual(json.loads(cr['spec']['configRawYaml']), self.artifacts['config'])
                     self.assertNotIn('configSecret', cr['spec'])
                     self.assertEqual(cr['spec']['replicaCount'], 1)
+                    self.assertEqual(cr['spec']['license']['keyRef']['name'], 'existing-license')
 
     def test_rejects_mutable_image_and_inline_credentials(self):
         self.spec['vmanomaly_image'] = 'victoriametrics/vmanomaly:latest'
