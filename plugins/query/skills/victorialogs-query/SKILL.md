@@ -36,7 +36,8 @@ When `VM_CURL_CONFIG` is unset, curl reads `/dev/null` and sends no auth header.
 ## Critical Rules
 
 - ALWAYS pass `start` on ALL VictoriaLogs endpoints — omitting it scans ALL stored data (extremely expensive). Not technically required by the API, but omitting it is almost never what you want.
-- `stats_query` uses `time` (ALWAYS pass it explicitly; do not rely on a default), `stats_query_range` uses `start`/`end`/`step`
+- `stats_query` bounds its aggregation range with `start` AND `end`. `time` is only the Prometheus evaluation timestamp and does NOT bound the range. Passing `start` without `end` aggregates from `start` to now
+- `stats_query_range` uses `start`/`end`/`step`
 - `step` is required for `hits` endpoint
 - `/select/logsql/query` returns JSON Lines (one JSON object per line), NOT a JSON array
 - LogsQL queries with special characters MUST be URL-encoded (use `--data-urlencode` for POST)
@@ -65,13 +66,27 @@ Response: JSON Lines (one JSON object per line). Pipe through `jq -s .` to colle
 ### Stats Query (Instant)
 
 ```bash
-# Count errors by level at a point in time
+# Count errors by level over a 9-hour range
 curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   --data-urlencode 'query={namespace="myapp"} | stats by (level) count() as total' \
-  "$VM_LOGS_URL/select/logsql/stats_query?time=2026-03-07T09:00:00Z" | jq .
+  "$VM_LOGS_URL/select/logsql/stats_query?start=2026-03-07T00:00:00Z&end=2026-03-07T09:00:00Z" | jq .
 ```
 
-Parameters: `query` (required, must contain `| stats` pipe), `time` (required, RFC3339), `start` (optional, alternative to `time`).
+Parameters: `query` (required, must contain `| stats` pipe), `start` and `end` (RFC3339, bound the aggregation range — pass both), `time` (RFC3339, evaluation timestamp only).
+
+Comparing two periods needs an explicit `end` on each call. Without it both ranges run to now, the earlier range contains the later one, and the trend inverts:
+
+```bash
+# previous week
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
+  --data-urlencode 'query={namespace="myapp"} | stats count() as total' \
+  "$VM_LOGS_URL/select/logsql/stats_query?start=2026-03-01T00:00:00Z&end=2026-03-08T00:00:00Z" | jq .
+
+# latest week
+curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
+  --data-urlencode 'query={namespace="myapp"} | stats count() as total' \
+  "$VM_LOGS_URL/select/logsql/stats_query?start=2026-03-08T00:00:00Z&end=2026-03-15T00:00:00Z" | jq .
+```
 
 Response: Prometheus-compatible JSON format.
 
@@ -271,5 +286,5 @@ echo "VM_CURL_CONFIG: ${VM_CURL_CONFIG:-(unset - no auth)}"
 - ALL endpoints accept both GET and POST with `application/x-www-form-urlencoded`
 - `field` parameter is required for `field_values` and `stream_field_values` endpoints
 - `facets` is the best single-call discovery tool — returns all field distributions at once
-- Do NOT confuse `stats_query` (instant, uses `time`) with `stats_query_range` (range, uses `start`/`end`/`step`)
+- Do NOT confuse `stats_query` (instant, one value per group) with `stats_query_range` (a series per `step`). Both bound the range with `start`/`end`
 - For full endpoint details, parameters, and response formats, see `references/api-reference.md`
