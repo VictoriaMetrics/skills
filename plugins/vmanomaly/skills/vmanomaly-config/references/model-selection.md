@@ -120,7 +120,11 @@ Temporal Envelope covers the preferred online trend, calendar, holiday, shift, a
 
 Keep Holt-Winters only for an existing legacy configuration or an explicit, validated requirement.
 
+Holt-Winters (`holtwinters`) is deprecated in v1.33.0, with removal planned for v1.34.0. Plan migration to Temporal Envelope.
+
 ### Isolation Forest
+
+`isolation_forest_univariate` and `isolation_forest_multivariate` are deprecated in v1.33.0, with removal planned for v1.34.0. Plan migration to the corresponding Temporal Envelope model. Prophet remains supported.
 
 Isolation Forest requires periodic refitting and does not extrapolate a temporal forecast. Keep it only for an existing legacy configuration or an explicit, validated feature-space requirement; use Temporal Envelope Multivariate for the normal cross-channel recommendation path.
 
@@ -149,3 +153,9 @@ For online MAD, z-score and quantile with long refit intervals, prefer `0 < deca
 - Deploy `class: auto` only when refit-time retuning is explicitly desired.
 
 For new online deployments, recommend an explicit inactive-model retention policy (initially `settings.retention: {ttl: 1w, check_interval: 5m}`), keeping `check_interval` below `ttl` and every scheduler’s `fit_every` (reduce 5m for refits at 5m or less) and preserving valid user choices. Adjust for churn and intermittent entities; TTL evicts stale instances and is independent of decay. Pair restoration with provisioned durable model/data storage; `restore_state: true` alone cannot provide persistence. See the preset completion guide for deployment choices.
+
+## Holiday output (v1.33.0+)
+
+Check the connected model schema before adding `provide_series: [anomaly_score, is_holiday]` to service YAML. Prophet and univariate/multivariate Temporal Envelope v1/v2 support this opt-in output; UI suggestions do not set service output selection. Keep any other requested outputs. The flag is numeric 0/1 at the output timestamp, with the corresponding output labels; country calendars and `special_events` form a union on local civil dates. Empty calendars warn and emit zeros; missing output is not zero. Subdivisions and forecast-horizon flags are not supported. Exact event dates count, excluding Prophet holiday windows and Envelope shoulders, independently of learned effects.
+
+When maintaining a user-requested Prophet configuration, prefer schema-supported top-level structured `holidays` for new calendar settings. Preserve legacy `args.country_holidays` or custom holidays when appropriate; do not combine nonempty structured and legacy calendar sources. Verify timezone handling against the connected schema and published model documentation.
