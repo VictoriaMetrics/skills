@@ -11,6 +11,7 @@ Use this after profiling real data; consult the [public model-selection guide](h
 - [Legacy offline models](#legacy-offline-models)
 - [Fit-window and cadence guidance](#fit-window-and-cadence-guidance)
 - [Autotune guidance](#autotune-guidance)
+- [Holiday output (v1.33.0+)](#holiday-output-v1330)
 
 ## Decision tree
 
