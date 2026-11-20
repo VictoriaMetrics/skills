@@ -109,7 +109,15 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   jq '{statsCollectedSince: .statsCollectedSince, statsCollectedRecordsTotal: .statsCollectedRecordsTotal}'
 ```
 
-If the endpoint returns an error, `storage.trackMetricNamesStats` may not be enabled on vmstorage.
+`statsCollectedSince` is the Unix time when the tracker started counting, so it sets how much a
+`queryRequestsCount` of 0 means. Return the window in days:
+
+- **< 1 day**: too early. Daily dashboards and weekly reports have not run yet.
+- **1-7 days**: finds obviously unused metrics, but misses weekly patterns.
+- **> 7 days**: good confidence.
+
+If the endpoint returns an error or `statsCollectedSince` is 0, `storage.trackMetricNamesStats` may
+not be enabled on vmstorage.
 Note this in the return and proceed — the analysis can still work with TSDB status data alone.
 
 **Query 4 — Cross-check: are "unused" metrics referenced in alerting rules?**
@@ -127,7 +135,7 @@ is NOT safe to drop — it's queried indirectly.
 
 **Return**: Unused metrics with cross-reference against alert rules. Flag each as:
 
-- **safe to drop**: never queried AND not in any rule
+- **safe to drop**: never queried AND not in any rule AND the window is more than 7 days
 - **used by rules only**: never queried by dashboards but referenced in rules — verify intent
 - **rarely used**: low query count, may be accessed infrequently (e.g., monthly reports)
 
@@ -199,8 +207,11 @@ judgment, not mechanical filtering.
 
 Cross-reference metric usage stats with TSDB series counts:
 
-- **Drop candidates**: `queryRequestsCount=0`, not in any alert/recording rule, >100 series
-- **Verify candidates**: `queryRequestsCount=0` but referenced in rules — check if rule is still needed
+- **Drop candidates**: `queryRequestsCount=0`, not in any alert/recording rule, >100 series,
+  stats window more than 7 days. With a shorter window, list them as verify candidates and give
+  the window in days.
+- **Verify candidates**: `queryRequestsCount=0` but referenced in rules — check if rule is still needed,
+  or `queryRequestsCount=0` with a stats window of 7 days or less
 - **Low-priority**: `queryRequestsCount≤5` with few series — not worth the config churn
 
 Sort by series count descending — the biggest unused metrics are the biggest wins.

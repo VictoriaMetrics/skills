@@ -106,15 +106,13 @@ curl -q --config "${VM_CURL_CONFIG:-/dev/null}" -s \
   "$VM_METRICS_URL/api/v1/query" | jq '.data.result[0].value[1]'
 ```
 
-For prefix groups where ALL metric names in the group are never-queried (e.g., all `go_godebug_*` metrics), you can use the prefix regex since there's nothing queried to accidentally include.
+List the names even when every name you see under a prefix is never-queried. A prefix regex such as `go_godebug_.+` also matches names that the tracker does not list. The tracker leaves out names added after its memory limit is full, and names stored before it was enabled. Some of those may be queried.
 
 Work through the major prefix groups from the Step 1 results. For each group:
 
-1. Check if the prefix contains a mix of queried and never-queried metrics, or if all metrics under the prefix are never-queried
-2. For mixed prefixes: build a regex from the specific never-queried names
-3. For fully-unqueried prefixes: use the prefix regex directly
-4. If `count()` returns `null` or `0` → these are historical-only metrics, note them but deprioritize
-5. If `count()` returns a positive number → these are actively ingested waste, prioritize for the report
+1. Build a regex from the specific never-queried names
+2. If `count()` returns `null` or `0` → these are historical-only metrics, note them but deprioritize
+3. If `count()` returns a positive number → these are actively ingested waste, prioritize for the report
 
 Do NOT spend time individually querying hundreds of historical metrics with 0 series. Focus your effort on the groups that have active series — those are the ones worth reporting.
 
@@ -198,22 +196,24 @@ Present findings in this format:
 
 For each category of unused metrics, suggest one of these actions:
 
+Put the exact never-queried names in the drop regex, never a prefix such as `go_memstats_.+` (see Step 2).
+
 **1. Drop at vmagent via `metric_relabel_configs`** (preferred for metrics you're confident are unused):
 
 ```yaml
 # Add to vmagent scrape config or VMServiceScrape/VMPodScrape
 metric_relabel_configs:
   - source_labels: [__name__]
-    regex: "metric_prefix_.+"
+    regex: "metric_a|metric_b|metric_c"
     action: drop
 ```
 
-**2. Drop at vmagent via global `-relabelConfig`** (for broad patterns across all scrape targets):
+**2. Drop at vmagent via global `-relabelConfig`** (for names that come from all scrape targets):
 
 ```yaml
 # vmagent -relabelConfig=relabel.yaml
 - source_labels: [__name__]
-  regex: "go_memstats_.+|process_virtual_memory_.+|promhttp_.+"
+  regex: "go_memstats_lookups_total|process_virtual_memory_max_bytes|promhttp_metric_handler_requests_in_flight"
   action: drop
 ```
 
