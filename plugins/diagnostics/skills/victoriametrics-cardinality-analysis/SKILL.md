@@ -123,11 +123,16 @@ An empty list does not mean that no rule uses the metric. VictoriaMetrics serves
 when it runs with `-vmalert.proxyURL`. Without that flag, query vmalert at `$VM_ALERT_URL/api/v1/rules`.
 
 Extract metric names from rule queries. Any "unused" metric that appears in an alert/recording rule
-is NOT safe to drop — it's queried indirectly.
+is NOT safe to drop: it's queried indirectly. A rule that selects names by regex (`{__name__=~"..."}`)
+does not name the metric, so treat every never-queried metric that the regex matches as used by rules.
+The regex must match the whole name, as in PromQL. For `!~` or `!=`, the names that do not match are
+the used ones. If neither VictoriaMetrics nor vmalert returns a rule, flag the never-queried metrics as
+unverified.
 
 **Return**: Unused metrics with cross-reference against alert rules. Flag each as:
 
 - **safe to drop**: never queried AND not in any rule
+- **unverified**: never queried, but no rules list could be read. Never call these safe to drop.
 - **used by rules only**: never queried by dashboards but referenced in rules — verify intent
 - **rarely used**: low query count, may be accessed infrequently (e.g., monthly reports)
 
@@ -201,6 +206,7 @@ Cross-reference metric usage stats with TSDB series counts:
 
 - **Drop candidates**: `queryRequestsCount=0`, not in any alert/recording rule, >100 series
 - **Verify candidates**: `queryRequestsCount=0` but referenced in rules — check if rule is still needed
+- **Unverified**: `queryRequestsCount=0` and no rules list could be read: never a drop candidate
 - **Low-priority**: `queryRequestsCount≤5` with few series — not worth the config churn
 
 Sort by series count descending — the biggest unused metrics are the biggest wins.
@@ -259,12 +265,13 @@ Use this template:
 | Stats tracking since | <date> |
 
 ### 1. Unused Metrics
-**Potential savings: ~X series (Y% of total)**
+**Potential savings: ~X series (Y% of total), from the "Drop" rows only**
 
 | Metric | Series | Last Queried | In Alert Rules | Action |
 |--------|--------|-------------|----------------|--------|
 | ... | ... | never | no | Drop |
 | ... | ... | never | yes — verify | Check rule |
+| ... | ... | never | unknown: no rules list | Keep |
 
 <details>
 <summary>Relabeling config to drop unused metrics</summary>
@@ -355,7 +362,7 @@ metric_relabel_configs:
 | **Total** | **X** | **Y%** | |
 
 ### Implementation Priority
-1. **[Low effort]** Drop unused metrics — pure relabeling, no data loss risk
+1. **[Low effort]** Drop the unused metrics marked "Drop": relabeling only
 2. **[Low effort]** Drop labels that should never be in metrics (IDs, messages, SQL)
 3. **[Medium effort]** Stream aggregation for high-cardinality HTTP/app metrics
 4. **[Medium effort]** Histogram bucket reduction
