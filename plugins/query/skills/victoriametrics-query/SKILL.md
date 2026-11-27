@@ -6,6 +6,7 @@ description: >
   or debugging relabeling/downsampling/retention configs. Triggers on: metric queries, PromQL, MetricsQL,
   label discovery, series exploration, cardinality checks, alert status, recording rules, active/top queries,
   export data, metric statistics, relabel debug, downsampling debug, retention debug, flags.
+  To debug why a vmalert rule fired, fired late or did not fire, use victoriametrics-rules.
 allowed-tools: Bash(curl:*), Bash(jq:*), Bash(head:*)
 ---
 
